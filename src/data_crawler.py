@@ -52,17 +52,16 @@ def extract_specs_dict(soup):
     specs_dict = {}
 
     # Phương pháp cho CellphoneS
-    if not specs_dict:
-        tech_items = soup.select('.technical-content-item')
-        if tech_items:
-            for item in tech_items:
-                title = item.select_one('.technical-content-item__title')
-                content = item.select_one('.technical-content-item__content')
-                if title and content:
-                    key = clean_text(title.text)
-                    value = clean_text(content.text)
-                    if key and value:
-                        specs_dict[key] = value
+    tech_items = soup.select('.technical-content-item')
+    if tech_items:
+        for item in tech_items:
+            title = item.select_one('.technical-content-item__title')
+            content = item.select_one('.technical-content-item__content')
+            if title and content:
+                key = clean_text(title.text)
+                value = clean_text(content.text)
+                if key and value:
+                    specs_dict[key] = value
 
     # Phương pháp dự phòng chung (bảng)
     if not specs_dict:
@@ -97,11 +96,7 @@ def crawl_category(category_url):
             return []
 
         soup = BeautifulSoup(response.content, 'lxml')
-        links = []
-
-        # Sử dụng selector phù hợp cho từng trang
-        if "cellphones.com.vn" in category_url:
-            links = soup.select('div.product-info a.product__link')
+        links = soup.select('div.product-info a.product__link')
 
         if not links:
             print("⚠️ Không tìm thấy link sản phẩm nào với các selector đã biết.")
@@ -161,13 +156,37 @@ def crawl_product(url):
         name_lower = base_name.lower()
         url_lower = url.lower()
         laptop_keywords = ["laptop", "macbook", "strix", "rog", "vivobook", "zenbook"]
+        tablet_keywords = ["tablet", "ipad", "tab"]
+
         if any(keyword in url_lower or keyword in name_lower for keyword in laptop_keywords):
             category = "Laptop"
+        elif any(keyword in url_lower or keyword in name_lower for keyword in tablet_keywords):
+            category = "Tablet"
 
         product_variations = []
         keys_to_remove_from_specs = []
 
         # 2. Tách các phiên bản sản phẩm
+        # CÁCH 1: Từ bảng thông số (cho sản phẩm sắp ra mắt)
+        variations_dict = {}
+        for key, value in specs_dict.items():
+            price_from_value = parse_price(value)
+            if main_product_identifier.lower() in key.lower() and price_from_value > 0:
+                normalized_name = clean_text(key)
+                normalized_name = re.sub(r'^(Giá|Giá dự kiến|Phiên bản)\s+', '', normalized_name, flags=re.IGNORECASE).strip()
+                normalized_name = re.sub(r'\s*\|.*$', '', normalized_name).strip()
+
+                if normalized_name not in variations_dict:
+                    variations_dict[normalized_name] = {
+                        "name": normalized_name,
+                        "price_int": price_from_value,
+                    }
+                keys_to_remove_from_specs.append(key)
+
+        if variations_dict:
+            product_variations = list(variations_dict.values())
+
+        # CÁCH 2: Từ box chọn phiên bản (cho sản phẩm thông thường)
         if not product_variations:
             variation_container = soup.find('div', class_='box-content-group')
             if variation_container:
@@ -178,10 +197,12 @@ def crawl_product(url):
                     if name_div and price_p:
                         variation_name = clean_text(name_div.text)
                         if main_product_identifier.lower() in variation_name.lower():
-                            product_variations.append({
-                                "name": variation_name,
-                                "price_int": parse_price(price_p.text),
-                            })
+                            variation_price = parse_price(price_p.text)
+                            if variation_price > 0:
+                                product_variations.append({
+                                    "name": variation_name,
+                                    "price_int": variation_price,
+                                })
 
         # 3. Tạo danh sách sản phẩm cuối cùng
         final_products = []
@@ -209,22 +230,17 @@ def crawl_product(url):
         else:
             # Fallback: Nếu không có phiên bản, lấy giá chính của trang
             price_int = 0
-
-            # CÁCH 1: Dựa vào gợi ý của bạn - tìm label và thẻ giá đi liền kề
             price_label = soup.find('div', class_='price-label')
             if price_label:
                 next_element = price_label.find_next_sibling()
                 if next_element:
                     price_int = parse_price(next_element.text)
 
-            # CÁCH 2: Nếu cách trên không thành công, thử các selector CSS phổ biến
             if price_int == 0:
                 price_selectors = [
-                    '.box-info__box-price .product__price--show', # CellphoneS
-                    '.product-price-current',                    # CellphoneS (dự phòng)
-                    '.special-price',                            # CellphoneS (khuyến mãi)
-                    '.style-price-special',                      # FPT Shop (khuyến mãi)
-                    '.style-price',                              # FPT Shop (giá gốc)
+                    '.box-info__box-price .product__price--show',
+                    '.product-price-current',
+                    '.special-price',
                 ]
                 for selector in price_selectors:
                     price_tag = soup.select_one(selector)
@@ -256,10 +272,8 @@ def crawl_product(url):
 
 # --- MAIN EXECUTION ---
 if __name__ == "__main__":
-    # URL mục tiêu là các trang danh mục sản phẩm
     category_urls = [
-        "https://cellphones.com.vn/laptop/asus.html",
-
+        "https://cellphones.com.vn/tablet.html",
     ]
 
     all_product_links = []
@@ -280,13 +294,28 @@ if __name__ == "__main__":
         if products:
             crawled_data.extend(products)
 
+    # --- BƯỚC KHỬ TRÙNG LẶP ---
+    print("\n🔄 Bắt đầu quá trình khử trùng lặp sản phẩm...")
+    final_unique_products = []
+    seen_product_names = set()
+    for product in crawled_data:
+        product_name = product.get("name", "")
+        # Chuẩn hóa tên để xử lý các hậu tố như "| Chính hãng"
+        normalized_name = re.sub(r'\s*\|.*$', '', product_name).strip()
+        if normalized_name and normalized_name not in seen_product_names:
+            final_unique_products.append(product)
+            seen_product_names.add(normalized_name)
+
+    if len(crawled_data) > len(final_unique_products):
+        print(f"✅ Đã loại bỏ {len(crawled_data) - len(final_unique_products)} sản phẩm trùng lặp.")
+
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     output_dir = os.path.join(base_dir, 'data', 'raw')
     os.makedirs(output_dir, exist_ok=True)
     output_file = os.path.join(output_dir, 'products.json')
 
     with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(crawled_data, f, ensure_ascii=False, indent=2)
+        json.dump(final_unique_products, f, ensure_ascii=False, indent=2)
 
     print(f"\n🎉 Hoàn tất! Dữ liệu đã được lưu tại:\n{output_file}")
-    print(f"Tổng số sản phẩm đã thu thập: {len(crawled_data)}")
+    print(f"Tổng số sản phẩm đã thu thập: {len(final_unique_products)}")
