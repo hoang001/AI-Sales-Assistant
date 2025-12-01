@@ -123,3 +123,12 @@ if __name__ == "__main__":
     else:
         for doc in res4:
             print(f"- {doc.metadata['name']} ({doc.metadata['price']:,} đ)")
+
+    # Test 5: Tìm kiếm Đồng hồ
+    print("\n--- Test 4: Tìm kiếm Đồng hồ ---")
+    res4 = engine.search("Đồng hồ phục vụ chạy bộ", category="Đồng hồ thông minh", max_price=2000000)
+    if not res4:
+        print("Không có sản phẩm nào khớp điều kiện!")
+    else:
+        for doc in res4:
+            print(f"- {doc.metadata['name']} ({doc.metadata['price']:,} đ)")

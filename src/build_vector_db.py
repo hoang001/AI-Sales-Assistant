@@ -7,9 +7,6 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 
-
-
-
 # --- CẤU HÌNH ĐƯỜNG DẪN ---
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_FILE = os.path.join(BASE_DIR, 'data', 'raw', 'products.json')
@@ -81,7 +78,6 @@ def load_and_process_data():
 
     print(f"Đã chuẩn bị {len(documents)} documents.")
     return documents
-
 
 
 def build_db():

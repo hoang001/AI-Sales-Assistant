@@ -323,7 +323,7 @@ def crawl_product(url):
 if __name__ == "__main__":
     # Danh sách các URL danh mục cần quét
     category_urls = [
-                #DIEN_THOAI
+        # DIEN_THOAI
         "https://cellphones.com.vn/mobile/apple/iphone-17.html",
         "https://cellphones.com.vn/mobile/apple/iphone-air.html",
         "https://cellphones.com.vn/mobile/apple/iphone-16.html",
@@ -354,7 +354,7 @@ if __name__ == "__main__":
         "https://cellphones.com.vn/mobile/sony.html",
         "https://cellphones.com.vn/mobile/infinix.html",
 
-        #TAPLET
+        # TAPLET
         "https://cellphones.com.vn/tablet/ipad-pro.html",
         "https://cellphones.com.vn/tablet/ipad-air.html",
         "https://cellphones.com.vn/tablet/ipad-mini.html",
@@ -369,7 +369,7 @@ if __name__ == "__main__":
         "https://cellphones.com.vn/tablet/teclast.html",
         "https://cellphones.com.vn/tablet/honor.html",
 
-        #LAPTOP
+        # LAPTOP
         "https://cellphones.com.vn/laptop/mac/macbook-air.html",
         "https://cellphones.com.vn/laptop/mac/macbook-pro.html",
         "https://cellphones.com.vn/laptop/mac/mini.html",
@@ -414,7 +414,7 @@ if __name__ == "__main__":
         "https://cellphones.com.vn/laptop/masstel.html",
         "https://cellphones.com.vn/laptop/samsung.html",
 
-        #DONG_HO_THONG_MINH
+        # DONG_HO_THONG_MINH
         "https://cellphones.com.vn/do-choi-cong-nghe/apple-watch/series-11.html",
         "https://cellphones.com.vn/do-choi-cong-nghe/apple-watch/series-10.html",
         "https://cellphones.com.vn/do-choi-cong-nghe/apple-watch/ultra-3.html",
