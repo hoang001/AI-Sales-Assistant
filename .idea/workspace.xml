@@ -5,7 +5,19 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ac874c47-70ba-4cf7-a114-e54bdc3c9fc9" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/src/1.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/URL.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/raw/products.json" beforeDir="false" afterPath="$PROJECT_DIR$/data/raw/products.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/vector_db/a78a65ca-26ed-4aa5-8ada-4b9b92bff6b5/data_level0.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/vector_db/a78a65ca-26ed-4aa5-8ada-4b9b92bff6b5/header.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/vector_db/a78a65ca-26ed-4aa5-8ada-4b9b92bff6b5/length.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/vector_db/a78a65ca-26ed-4aa5-8ada-4b9b92bff6b5/link_lists.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/vector_db/chroma.sqlite3" beforeDir="false" afterPath="$PROJECT_DIR$/data/vector_db/chroma.sqlite3" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/oke" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/build_vector_db.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/build_vector_db.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/data_crawler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/data_crawler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/search_engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/search_engine.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -46,6 +58,7 @@
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "Python.1.executor": "Run",
+    "Python.2.executor": "Run",
     "Python.build_vector_db.executor": "Run",
     "Python.data_crawler.executor": "Run",
     "Python.search_engine.executor": "Run",
@@ -69,10 +82,12 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\AI-Sales-Assistant\src" />
+      <recent name="D:\AI-Sales-Assistant" />
       <recent name="D:\AI-Sales-Assistant\data" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.data_crawler">
+  <component name="RunManager" selected="Python.search_engine">
     <configuration name="1" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="AI-Sales-Assistant" />
       <option name="ENV_FILES" value="" />
@@ -88,6 +103,29 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/1.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="2" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="AI-Sales-Assistant" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/2.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -167,10 +205,11 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.data_crawler" />
-        <item itemvalue="Python.1" />
         <item itemvalue="Python.search_engine" />
         <item itemvalue="Python.build_vector_db" />
+        <item itemvalue="Python.2" />
+        <item itemvalue="Python.1" />
+        <item itemvalue="Python.data_crawler" />
       </list>
     </recent_temporary>
   </component>
@@ -192,7 +231,7 @@
       <workItem from="1764603048922" duration="43000" />
       <workItem from="1764603144097" duration="136000" />
       <workItem from="1764603322001" duration="5119000" />
-      <workItem from="1764608571910" duration="8293000" />
+      <workItem from="1764608571910" duration="17520000" />
     </task>
     <servers />
   </component>
@@ -200,10 +239,11 @@
     <option name="version" value="3" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/AI_Sales_Assistant$search_engine.coverage" NAME="search_engine Coverage Results" MODIFIED="1764612528010" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
-    <SUITE FILE_PATH="coverage/AI_Sales_Assistant$data_crawler.coverage" NAME="data_crawler Coverage Results" MODIFIED="1764616879059" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
-    <SUITE FILE_PATH="coverage/AI_Sales_Assistant$1.coverage" NAME="1 Coverage Results" MODIFIED="1764616462956" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
-    <SUITE FILE_PATH="coverage/AI_Sales_Assistant$build_vector_db.coverage" NAME="build_vector_db Coverage Results" MODIFIED="1764612497949" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/AI_Sales_Assistant$2.coverage" NAME="2 Coverage Results" MODIFIED="1764623228258" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/AI_Sales_Assistant$search_engine.coverage" NAME="search_engine Coverage Results" MODIFIED="1764624537244" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/AI_Sales_Assistant$data_crawler.coverage" NAME="data_crawler Coverage Results" MODIFIED="1764622323350" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/AI_Sales_Assistant$1.coverage" NAME="1 Coverage Results" MODIFIED="1764622885543" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/AI_Sales_Assistant$build_vector_db.coverage" NAME="build_vector_db Coverage Results" MODIFIED="1764624144949" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
   </component>
   <component name="github-copilot-workspace">
     <instructionFileLocations>
