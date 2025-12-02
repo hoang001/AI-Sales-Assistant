@@ -1,8 +1,15 @@
 import os
 
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Chroma
-from langchain_chroma import Chroma
+# Fix lỗi import cho các phiên bản LangChain khác nhau
+try:
+    from langchain_huggingface import HuggingFaceEmbeddings
+except ImportError:
+    from langchain_community.embeddings import HuggingFaceEmbeddings
+
+try:
+    from langchain_chroma import Chroma
+except ImportError:
+    from langchain_community.vectorstores import Chroma
 
 # --- CẤU HÌNH ---
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -11,80 +18,62 @@ DB_DIR = os.path.join(BASE_DIR, 'data', 'vector_db')
 
 class StoreSearchEngine:
     def __init__(self):
-        print("Đang tải Search Engine...")
-        # 1. Load lại Embedding Model (phải giống hệt lúc Build DB)
+        print("⏳ Đang tải Search Engine...")
+        # 1. Load lại Embedding Model
         self.embedding_model = HuggingFaceEmbeddings(
             model_name="keepitreal/vietnamese-sbert",
             model_kwargs={'device': 'cpu'},
             encode_kwargs={'normalize_embeddings': True}
         )
 
-        # 2. Kết nối vào DB đã lưu trên ổ cứng
+        # 2. Kết nối vào DB
         if not os.path.exists(DB_DIR):
-            raise Exception(f"Không tìm thấy DB tại {DB_DIR}. Hãy chạy build_vector_db.py trước!")
+            raise Exception(f"❌ Không tìm thấy DB tại {DB_DIR}. Hãy chạy build_vector_db.py trước!")
 
         self.vector_db = Chroma(
             persist_directory=DB_DIR,
             embedding_function=self.embedding_model
         )
-        print("Search Engine đã sẵn sàng!")
+        print("✅ Search Engine đã sẵn sàng!")
 
-    def search(self, query, category=None, min_price=None, max_price=None, k=5):
+    # --- ĐÂY LÀ PHẦN BẠN ĐANG THIẾU ---
+    def search(self, query, min_price=None, max_price=None, category=None, brand=None, k=5):
         """
-        Tìm kiếm sản phẩm hiệu quả hơn bằng cách sử dụng metadata filtering của ChromaDB.
-        :param query: Câu hỏi của người dùng (VD: "Máy nào pin trâu")
-        :param category: Danh mục sản phẩm (VD: "Điện thoại", "Laptop", "Tablet")
-        :param min_price: Giá thấp nhất (VNĐ)
-        :param max_price: Giá cao nhất (VNĐ)
-        :param k: Số lượng kết quả muốn lấy
+        Tìm kiếm tối ưu với bộ lọc đa chiều: Giá + Loại + Hãng
         """
-        print(f"\nQuery: '{query}' | Category: {category} | Giá: {min_price}-{max_price}")
+        print(f"\n🔍 Query: '{query}' | Giá: {min_price}-{max_price} | Loại: {category} | Hãng: {brand}")
 
-        # --- XÂY DỰNG BỘ LỌC METADATA (PRE-FILTERING) ---
-        # Tối ưu: Lọc ở tầng database trước khi tìm kiếm vector sẽ nhanh hơn nhiều.
-        where_filter = {}
         conditions = []
-        if category:
-            # Quan trọng: ChromaDB phân biệt hoa thường.
-            # Category đã được lưu với chữ cái đầu viết hoa ("Laptop", "Tablet",...)
-            conditions.append({'category': {'$eq': category}})
+
+        # 1. Lọc theo Giá
         if min_price is not None:
-            conditions.append({'price': {'$gte': min_price}})
+            conditions.append({"price": {"$gte": min_price}})
         if max_price is not None:
-            conditions.append({'price': {'$lte': max_price}})
+            conditions.append({"price": {"$lte": max_price}})
 
-        if conditions:
-            if len(conditions) > 1:
-                where_filter = {'$and': conditions}
-            else:
-                where_filter = conditions[0]
+        # 2. Lọc theo Loại (Category)
+        if category:
+            conditions.append({"category": category})
 
-        # --- THỰC HIỆN TÌM KIẾM ---
-        try:
-            # Sử dụng `filter` để áp dụng bộ lọc metadata ở tầng DB
-            results = self.vector_db.similarity_search(
-                query,
-                k=k * 2,  # Lấy nhiều hơn k một chút để khử trùng lặp
-                filter=where_filter if where_filter else None
-            )
-        except Exception as e:
-            print(f"Lỗi tìm kiếm: {e}")
-            return []
+        # 3. Lọc theo Hãng (Brand) - PHẦN MỚI THÊM
+        if brand:
+            conditions.append({"brand": brand})
 
-        # --- KHỬ TRÙNG LẶP KẾT QUẢ ---
-        # Mặc dù đã lọc, có thể nhiều chunks của cùng 1 sản phẩm được trả về.
-        # Chúng ta chỉ muốn hiển thị mỗi sản phẩm (source URL.txt) một lần.
-        final_results = []
-        seen_sources = set()
-        for doc in results:
-            source = doc.metadata.get('source')
-            if source and source not in seen_sources:
-                final_results.append(doc)
-                seen_sources.add(source)
-            if len(final_results) >= k:
-                break
+        # Xây dựng filter query cho ChromaDB
+        if len(conditions) == 0:
+            final_filter = None
+        elif len(conditions) == 1:
+            final_filter = conditions[0]
+        else:
+            final_filter = {"$and": conditions}
 
-        return final_results
+        # Thực hiện tìm kiếm Vector
+        results = self.vector_db.similarity_search(
+            query,
+            k=k,
+            filter=final_filter
+        )
+        return results
 
 
 # --- PHẦN TEST (CHẠY THỬ) ---
@@ -126,9 +115,18 @@ if __name__ == "__main__":
 
     # Test 5: Tìm kiếm Đồng hồ
     print("\n--- Test 4: Tìm kiếm Đồng hồ ---")
-    res4 = engine.search("Đồng hồ phục vụ chạy bộ", category="Đồng hồ thông minh", max_price=2000000)
-    if not res4:
+    res5 = engine.search("Đồng hồ phục vụ chạy bộ", category="Đồng hồ thông minh", max_price=2000000)
+    if not res5:
         print("Không có sản phẩm nào khớp điều kiện!")
     else:
         for doc in res4:
             print(f"- {doc.metadata['name']} ({doc.metadata['price']:,} đ)")
+
+    print("\n--- Test 3: Tìm Tablet để vẽ (Chỉ tìm trong Tablet) ---")
+    # Giả sử bạn đã crawl link iPad/Galaxy Tab
+    res6 = engine.search("Máy có bút cảm ứng vẽ đẹp", category="Tablet")
+    for doc in res6: print(f"- {doc.metadata['name']}")
+
+    print("\n--- Test 4: Tìm đồ Apple giá rẻ (Tìm tất cả category) ---")
+    res7 = engine.search("Thiết bị Apple giá tốt", brand="Apple", max_price=15000000)
+    for doc in res7: print(f"- {doc.metadata['name']} ({doc.metadata['category']})")

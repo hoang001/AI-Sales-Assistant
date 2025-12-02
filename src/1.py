@@ -14,6 +14,68 @@ HEADERS = {
 }
 
 
+def enrich_product_content(name, specs, price, category):
+    """
+    Hàm 'phiên dịch' thông số kỹ thuật sang nhu cầu người dùng.
+    Input: Tên, Thông số, Giá, Loại (Laptop/Điện thoại)
+    Output: Một chuỗi văn bản chứa các từ khóa SEO/Ngữ nghĩa.
+    """
+    keywords = []
+    text_lower = (name + " " + specs).lower()
+
+    # --- LOGIC 1: HIỆU NĂNG & GAMING (Đã có) ---
+    if any(x in text_lower for x in ['rtx', 'gtx', 'gaming', 'rog', 'tuf', 'nitro', 'loq', 'legion', 'predator']):
+        keywords.append("Cấu hình mạnh mẽ chuyên chơi game nặng (Genshin, CS:GO, AAA) và làm đồ họa 3D.")
+        keywords.append("Hệ thống tản nhiệt tốt, hiệu suất cao.")
+
+    if 'a17' in text_lower or 'm3' in text_lower or 'snapdragon 8 gen' in text_lower:
+        keywords.append("Vi xử lý đầu bảng, hiệu năng xử lý tác vụ nặng cực nhanh.")
+
+    # --- LOGIC 2: PIN & SẠC (Khách hay hỏi: "Máy nào pin trâu?") ---
+    # Điện thoại: Pin > 4500mAh hoặc dòng Plus/Max/Ultra
+    if category == "Điện thoại":
+        if any(x in text_lower for x in ['5000mah', '6000mah', 'pro max', 'plus', 'ultra']):
+            keywords.append("Pin trâu sử dụng thoải mái cả ngày dài, không lo hết pin.")
+        if 'sạc nhanh' in text_lower or 'supervooc' in text_lower or 'w' in text_lower:  # VD: 67W, 120W
+            keywords.append("Hỗ trợ sạc siêu nhanh, tiết kiệm thời gian chờ đợi.")
+    # Laptop: MacBook hoặc chuẩn Evo
+    elif category == "Laptop":
+        if 'macbook' in text_lower or 'evo' in text_lower or 'lg gram' in text_lower:
+            keywords.append("Thời lượng pin ấn tượng, thích hợp mang đi cafe hoặc làm việc di động cả ngày.")
+
+    # --- LOGIC 3: MÀN HÌNH & GIẢI TRÍ (Khách hay hỏi: "Máy nào xem phim đẹp?") ---
+    if any(x in text_lower for x in ['oled', 'amoled', 'retina', 'dynamic island']):
+        keywords.append("Màn hình hiển thị rực rỡ, màu sắc sống động, xem phim và giải trí cực đã.")
+
+    if any(x in text_lower for x in ['120hz', '144hz', '165hz', '240hz']):
+        keywords.append("Màn hình tần số quét cao, vuốt chạm mượt mà, chơi game không bị xé hình.")
+
+    if any(x in text_lower for x in ['100% srgb', 'dci-p3', 'chuẩn màu']):
+        keywords.append("Màn hình chuẩn màu, độ sai lệch màu thấp, phù hợp dân thiết kế đồ họa, chỉnh ảnh.")
+
+    # --- LOGIC 4: THIẾT KẾ & ĐỐI TƯỢNG (Khách hay hỏi: "Máy cho nữ/sinh viên/doanh nhân") ---
+    # Mỏng nhẹ / Sang trọng
+    if any(x in text_lower for x in ['air', 'zenbook', 'swift', 'slim', 'yoga', 'xps', 'spectre']):
+        keywords.append("Thiết kế mỏng nhẹ, thời trang, sang trọng, dễ dàng bỏ balo mang đi học đi làm.")
+        keywords.append("Phù hợp cho doanh nhân, sinh viên kinh tế và nhân viên văn phòng.")
+
+    # Bền bỉ
+    if any(x in text_lower for x in ['tuf', 'thinkpad', 'độ bền chuẩn quân đội']):
+        keywords.append("Thiết kế bền bỉ, chống va đập tốt, độ bền chuẩn quân đội.")
+
+    # --- LOGIC 5: BỘ NHỚ & LƯU TRỮ ---
+    if '512gb' in text_lower or '1tb' in text_lower:
+        keywords.append(
+            "Dung lượng lưu trữ khủng, thoải mái lưu ảnh, video và cài đặt ứng dụng mà không lo đầy bộ nhớ.")
+
+    # --- LOGIC 6: CAMERA (Điện thoại) ---
+    if category == "Điện thoại" and price > 10000000:
+        if any(x in text_lower for x in ['zoom', 'tele', 'chống rung', 'ois', 'leica', 'zeiss']):
+            keywords.append("Camera chụp ảnh chuyên nghiệp, quay phim chống rung tốt, chụp đêm sáng rõ.")
+
+    # Ghép lại thành câu
+    return " ".join(keywords)
+
 # --- HÀM HỖ TRỢ (UTILS) ---
 def clean_text(text):
     """
@@ -268,13 +330,28 @@ def crawl_product(url):
                 if storage_match:
                     variation_specs["Bộ nhớ trong"] = storage_match.group(1).strip()
 
+                specs_str = json.dumps(variation_specs, ensure_ascii=False)
+                enriched_content = enrich_product_content(
+                    variation["name"],
+                    specs_str,
+                    variation["price_int"],
+                    category
+                )
+                rag_content = (
+                    f"Sản phẩm: {variation['name']}. "
+                    f"Giá bán khoảng: {variation['price_int']:,} đồng. "
+                    f"Cấu hình chi tiết: {specs_str}. "
+                    f"Tính năng nổi bật: {desc_text}. "
+                    f"Tóm tắt cho người dùng: {enriched_content}"
+                )
+
                 final_products.append({
                     "url": url,
                     "name": variation["name"],
                     "price_int": variation["price_int"],
                     "category": category,
                     "specs": variation_specs,
-                    "rag_content": f"Sản phẩm: {variation['name']}. Giá bán khoảng: {variation['price_int']:,} đồng. Cấu hình chi tiết: {json.dumps(variation_specs, ensure_ascii=False)}. Tính năng nổi bật: {desc_text}"
+                    "rag_content": rag_content
                 })
         else:
             # Fallback: Nếu không có phiên bản, lấy giá chính của trang
@@ -301,13 +378,28 @@ def crawl_product(url):
             # Chỉ thêm sản phẩm vào danh sách nếu tìm thấy giá hợp lệ
             if price_int > 0:
                 print(f"Thành công (1 sản phẩm): {base_name} - {price_int:,} đ")
+                specs_str = json.dumps(common_specs, ensure_ascii=False)
+                enriched_content = enrich_product_content(
+                    base_name,
+                    specs_str,
+                    price_int,
+                    category
+                )
+                rag_content = (
+                    f"Sản phẩm: {base_name}. "
+                    f"Giá bán khoảng: {price_int:,} đồng. "
+                    f"Cấu hình chi tiết: {specs_str}. "
+                    f"Tính năng nổi bật: {desc_text}. "
+                    f"Tóm tắt cho người dùng: {enriched_content}"
+                )
+
                 final_products.append({
                     "url": url,
                     "name": base_name,
                     "price_int": price_int,
                     "category": category,
                     "specs": common_specs,
-                    "rag_content": f"Sản phẩm: {base_name}. Giá bán khoảng: {price_int:,} đồng. Cấu hình chi tiết: {json.dumps(common_specs, ensure_ascii=False)}. Tính năng nổi bật: {desc_text}"
+                    "rag_content": rag_content
                 })
             else:
                 print(f"Không tìm thấy giá cho: {base_name}. Bỏ qua sản phẩm này.")
@@ -323,123 +415,35 @@ def crawl_product(url):
 if __name__ == "__main__":
     # Danh sách các URL danh mục cần quét
     category_urls = [
-                #DIEN_THOAI
+        # DIEN_THOAI
         "https://cellphones.com.vn/mobile/apple/iphone-17.html",
         "https://cellphones.com.vn/mobile/apple/iphone-air.html",
         "https://cellphones.com.vn/mobile/apple/iphone-16.html",
         "https://cellphones.com.vn/mobile/apple/iphone-15.html",
         "https://cellphones.com.vn/mobile/apple/iphone-14.html",
         "https://cellphones.com.vn/mobile/apple/iphone-13.html",
-        "https://cellphones.com.vn/mobile/samsung/galaxy-s.html",
-        "https://cellphones.com.vn/mobile/samsung/galaxy-a.html",
-        "https://cellphones.com.vn/mobile/samsung/galaxy-m.html",
-        "https://cellphones.com.vn/mobile/samsung/galaxy-z.html",
-        "https://cellphones.com.vn/mobile/xiaomi/15-series.html",
-        "https://cellphones.com.vn/mobile/xiaomi/14-series.html",
-        "https://cellphones.com.vn/mobile/xiaomi/13-series.html",
-        "https://cellphones.com.vn/mobile/xiaomi/12-series.html",
-        "https://cellphones.com.vn/mobile/xiaomi/redmi.html",
-        "https://cellphones.com.vn/mobile/pocophone.html",
-        "https://cellphones.com.vn/mobile/oppo/a-series.html",
-        "https://cellphones.com.vn/mobile/oppo/find-x-series.html",
-        "https://cellphones.com.vn/mobile/oppo/find-n-series.html",
-        "https://cellphones.com.vn/mobile/oppo/reno-series.html",
-        "https://cellphones.com.vn/mobile/vivo/y-series.html",
-        "https://cellphones.com.vn/mobile/vivo/v-series.html",
-        "https://cellphones.com.vn/mobile/vivo/x-series.html",
-        "https://cellphones.com.vn/mobile/realme/c-series.html",
-        "https://cellphones.com.vn/mobile/honor.html",
-        "https://cellphones.com.vn/mobile/tecno.html",
-        "https://cellphones.com.vn/mobile/nubia.html",
-        "https://cellphones.com.vn/mobile/sony.html",
-        "https://cellphones.com.vn/mobile/infinix.html",
 
-        #TAPLET
+
+        # TAPLET
         "https://cellphones.com.vn/tablet/ipad-pro.html",
         "https://cellphones.com.vn/tablet/ipad-air.html",
         "https://cellphones.com.vn/tablet/ipad-mini.html",
-        "https://cellphones.com.vn/tablet/ipad-10-2.html",
-        "https://cellphones.com.vn/tablet/ipad-10-9.html",
-        "https://cellphones.com.vn/tablet/samsung/samsung-galaxy-tab-s11-series.html",
-        "https://cellphones.com.vn/tablet/samsung/samsung-galaxy-tab-s10-series.html",
-        "https://cellphones.com.vn/tablet/samsung/samsung-galaxy-tab-s9-series.html",
-        "https://cellphones.com.vn/tablet/xiaomi.html",
-        "https://cellphones.com.vn/tablet/huawei.html",
-        "https://cellphones.com.vn/tablet/lenovo.html",
-        "https://cellphones.com.vn/tablet/teclast.html",
-        "https://cellphones.com.vn/tablet/honor.html",
 
-        #LAPTOP
+
+        # LAPTOP
         "https://cellphones.com.vn/laptop/mac/macbook-air.html",
         "https://cellphones.com.vn/laptop/mac/macbook-pro.html",
         "https://cellphones.com.vn/laptop/mac/mini.html",
         "https://cellphones.com.vn/laptop/mac/mac-studio.html",
-        "https://cellphones.com.vn/laptop/mac/imac.html",
-        "https://cellphones.com.vn/laptop/asus/vivobook.html",
-        "https://cellphones.com.vn/laptop/asus/gaming.html",
-        "https://cellphones.com.vn/laptop/asus/zenbook.html",
-        "https://cellphones.com.vn/laptop/asus/expertbook.html",
-        "https://cellphones.com.vn/laptop/asus/rog.html",
-        "https://cellphones.com.vn/laptop/asus/tuf.html",
-        "https://cellphones.com.vn/laptop/lenovo/ideapad.html",
-        "https://cellphones.com.vn/laptop/lenovo/thinkpad.html",
-        "https://cellphones.com.vn/laptop/lenovo/yoga.html",
-        "https://cellphones.com.vn/laptop/lenovo/thinkbook.html",
-        "https://cellphones.com.vn/laptop/lenovo/v-series.html",
-        "https://cellphones.com.vn/laptop/lenovo/loq.html",
-        "https://cellphones.com.vn/laptop/lenovo/legion.html",
-        "https://cellphones.com.vn/laptop/msi/modern.html",
-        "https://cellphones.com.vn/laptop/msi/prestige.html",
-        "https://cellphones.com.vn/laptop/msi/gf-series.html",
-        "https://cellphones.com.vn/laptop/msi/cyborg.html",
-        "https://cellphones.com.vn/laptop/msi/katana.html",
-        "https://cellphones.com.vn/laptop/msi/venture.html",
-        "https://cellphones.com.vn/laptop/acer/nitro.html",
-        "https://cellphones.com.vn/laptop/acer/aspire.html",
-        "https://cellphones.com.vn/laptop/acer/swift.html",
-        "https://cellphones.com.vn/laptop/acer/predator.html",
-        "https://cellphones.com.vn/laptop/hp/pavilion.html",
-        "https://cellphones.com.vn/laptop/hp/victus.html",
-        "https://cellphones.com.vn/laptop/hp/envy.html",
-        "https://cellphones.com.vn/laptop/hp/compaq.html",
-        "https://cellphones.com.vn/laptop/hp/spectre.html",
-        "https://cellphones.com.vn/laptop/hp/omnibook.html",
-        "https://cellphones.com.vn/laptop/dell/inspiron.html",
-        "https://cellphones.com.vn/laptop/dell/vostro.html",
-        "https://cellphones.com.vn/laptop/dell/xps.html",
-        "https://cellphones.com.vn/laptop/dell/latitude.html",
-        "https://cellphones.com.vn/laptop/dell/dell-15.html",
-        "https://cellphones.com.vn/laptop/lg.html",
-        "https://cellphones.com.vn/laptop/gigabyte.html",
-        "https://cellphones.com.vn/laptop/masstel.html",
-        "https://cellphones.com.vn/laptop/samsung.html",
 
-        #DONG_HO_THONG_MINH
+
+
+        # DONG_HO_THONG_MINH
         "https://cellphones.com.vn/do-choi-cong-nghe/apple-watch/series-11.html",
         "https://cellphones.com.vn/do-choi-cong-nghe/apple-watch/series-10.html",
         "https://cellphones.com.vn/do-choi-cong-nghe/apple-watch/ultra-3.html",
         "https://cellphones.com.vn/do-choi-cong-nghe/apple-watch/ultra.html",
-        "https://cellphones.com.vn/do-choi-cong-nghe/apple-watch/se-3.html",
-        "https://cellphones.com.vn/do-choi-cong-nghe/apple-watch/se.html",
-        "https://cellphones.com.vn/do-choi-cong-nghe/samsung.html",
-        "https://cellphones.com.vn/do-choi-cong-nghe/xiaomi.html",
-        "https://cellphones.com.vn/do-choi-cong-nghe/huawei.html",
-        "https://cellphones.com.vn/do-choi-cong-nghe/coros.html",
-        "https://cellphones.com.vn/do-choi-cong-nghe/garmin.html",
-        "https://cellphones.com.vn/do-choi-cong-nghe/amazfit.html",
-        "https://cellphones.com.vn/do-choi-cong-nghe/kieslect.html",
-        "https://cellphones.com.vn/do-choi-cong-nghe/soundpeats.html",
-        "https://cellphones.com.vn/do-choi-cong-nghe/black-shark.html",
-        "https://cellphones.com.vn/do-choi-cong-nghe/masstel.html",
-        "https://cellphones.com.vn/do-choi-cong-nghe/myalo.html",
-        "https://cellphones.com.vn/do-choi-cong-nghe/mibro.html",
-        "https://cellphones.com.vn/do-choi-cong-nghe/viettel.html",
-        "https://cellphones.com.vn/do-choi-cong-nghe/kospet.html",
-        "https://cellphones.com.vn/do-choi-cong-nghe/imoo.html",
-        "https://cellphones.com.vn/do-choi-cong-nghe/goly.html",
-        "https://cellphones.com.vn/do-choi-cong-nghe/kavvo.html",
-        "https://cellphones.com.vn/do-choi-cong-nghe/riversong.html",
-        "https://cellphones.com.vn/do-choi-cong-nghe/wonlex.html",
+
     ]
 
     # Bước 1: Khám phá tất cả các link sản phẩm từ các trang danh mục
