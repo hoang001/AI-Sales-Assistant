@@ -1,7 +1,7 @@
 import google.generativeai as genai
 from .config import settings
 from .tools import defined_tools
-from .prompts import sales_system_instruction # <--- IMPORT TỪ FILE RIÊNG
+from .prompts import sales_system_instruction
 
 class AgentManager:
     def __init__(self):
