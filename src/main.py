@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from .agent import agent_manager
 from .database import db_manager
 
-# Khởi tạo DB ngay khi bật server
+# Tự động tạo DB khi khởi động
 db_manager.initialize_db()
 
 app = FastAPI(title="AI Sales Backend Pro")
@@ -24,7 +24,3 @@ class ChatInput(BaseModel):
 async def chat(inp: ChatInput):
     reply = agent_manager.get_response(inp.user_id, inp.message)
     return {"response": reply}
-
-@app.get("/health")
-async def health():
-    return {"status": "active", "database": "connected"}
