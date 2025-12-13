@@ -1,17 +1,15 @@
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 import os
-import re # <--- Cần thêm thư viện này để bắt số tiền
+import re
 from .config import settings
 
 class StoreSearchEngine:
     def __init__(self):
-        # Cấu hình Embedding
         self.embedding_model = HuggingFaceEmbeddings(
             model_name="keepitreal/vietnamese-sbert"
         )
         
-        # Kết nối ChromaDB
         if os.path.exists(settings.VECTOR_DB_PATH) and os.listdir(settings.VECTOR_DB_PATH):
             self.vector_db = Chroma(
                 persist_directory=str(settings.VECTOR_DB_PATH),
@@ -20,83 +18,92 @@ class StoreSearchEngine:
             print(f"✅ RAG: Đã kết nối DB tại {settings.VECTOR_DB_PATH}")
         else:
             self.vector_db = None
-            print("⚠️ RAG: Chưa có dữ liệu Vector. Hãy chạy 'python -m src.build_vector_db'")
+            print("⚠️ RAG: Chưa có dữ liệu Vector.")
 
-    # --- HÀM MỚI: BÓC TÁCH GIÁ TIỀN TỪ CÂU NÓI ---
+    # --- HÀM 1: BÓC TÁCH GIÁ (Giữ nguyên) ---
     def extract_price_intent(self, query: str):
-        """
-        Phân tích câu nói để tìm ý định về giá.
-        Ví dụ: "tầm 20 triệu" -> min=18tr, max=22tr
-        """
-        text = query.lower().replace(".", "").replace(",", "") # Xóa dấu chấm phẩy cho dễ xử lý
-        
-        # 1. Tìm con số đi kèm với từ chỉ tiền (tr, triệu, k, nghìn...)
-        # Pattern: (số) + (khoảng trắng tùy ý) + (đơn vị)
+        text = query.lower().replace(".", "").replace(",", "")
         match = re.search(r"(\d+)\s*(tr|triệu|m|k|nghìn|củ)", text)
-        
-        if not match:
-            return None, None
+        if not match: return None, None
             
         number = int(match.group(1))
         unit = match.group(2)
-        
-        # Chuẩn hóa về VNĐ
-        price_value = 0
-        if unit in ['tr', 'triệu', 'm', 'củ']:
-            price_value = number * 1_000_000
-        elif unit in ['k', 'nghìn']:
-            price_value = number * 1_000
+        price_value = number * 1_000_000 if unit in ['tr', 'triệu', 'm', 'củ'] else number * 1_000
             
-        # 2. Xử lý logic "Khoảng", "Dưới", "Trên"
         min_price = None
         max_price = None
         
-        if "dưới" in text or "tối đa" in text or "nhỏ hơn" in text:
+        if "dưới" in text or "tối đa" in text:
             max_price = price_value
-        elif "trên" in text or "hơn" in text or "tối thiểu" in text:
+        elif "trên" in text or "tối thiểu" in text:
             min_price = price_value
         else:
-            # Mặc định hiểu là "KHOẢNG" (Dao động 10%)
             min_price = int(price_value * 0.9)
             max_price = int(price_value * 1.1)
             
         return min_price, max_price
 
+    # --- HÀM 2: BÓC TÁCH DANH MỤC (MỚI) ---
+    def detect_category(self, query: str):
+        """Phát hiện xem khách muốn tìm loại sản phẩm nào"""
+        q = query.lower()
+        if "laptop" in q or "máy tính" in q or "macbook" in q:
+            return "Laptop"
+        if "điện thoại" in q or "iphone" in q or "samsung" in q or "smartphone" in q:
+            return "Điện thoại" # Hoặc "Mobile" tùy data của bạn
+        if "tablet" in q or "ipad" in q or "máy tính bảng" in q:
+            return "Tablet"
+        if "đồng hồ" in q or "watch" in q:
+            return "Đồng hồ thông minh"
+        return None
+
     def search(self, query: str, k=5):
-        if not self.vector_db:
-            return []
+        if not self.vector_db: return []
 
-        # 1. Tự động trích xuất giá từ câu query
-        detected_min, detected_max = self.extract_price_intent(query)
+        # 1. Phân tích ý định (Giá + Danh mục)
+        min_p, max_p = self.extract_price_intent(query)
+        category = self.detect_category(query)
         
-        print(f"🔍 Query: '{query}' | Giá detect: {detected_min:,} - {detected_max:,}" if detected_min else f"🔍 Query: '{query}' | Giá: Không rõ")
+        print(f"🔍 Query: '{query}' | Target: {category} | Giá: {min_p}-{max_p}")
 
-        # 2. Tạo bộ lọc Metadata cho ChromaDB
-        # Lưu ý: ChromaDB filter cú pháp: {"metadata_field": {"$operator": value}}
-        filter_dict = {}
+        # --- CHIẾN THUẬT 1: TÌM KIẾM CHÍNH XÁC (Ưu tiên số 1) ---
         conditions = []
+        if min_p: conditions.append({"price": {"$gte": min_p}})
+        if max_p: conditions.append({"price": {"$lte": max_p}})
+        if category: conditions.append({"category": category})
 
-        if detected_min is not None:
-            conditions.append({"price": {"$gte": detected_min}})
-        if detected_max is not None:
-            conditions.append({"price": {"$lte": detected_max}})
-
-        # Logic ghép bộ lọc (ChromaDB yêu cầu $and nếu có nhiều điều kiện)
-        if len(conditions) > 1:
-            filter_dict = {"$and": conditions}
-        elif len(conditions) == 1:
-            filter_dict = conditions[0]
-        else:
-            filter_dict = None # Không lọc gì cả
-
-        # 3. Thực hiện tìm kiếm
+        strict_filter = {"$and": conditions} if len(conditions) > 1 else (conditions[0] if conditions else None)
+        
         try:
-            results = self.vector_db.similarity_search(
-                query,
-                k=k,
-                filter=filter_dict # Truyền bộ lọc vào đây
-            )
+            results = self.vector_db.similarity_search(query, k=k, filter=strict_filter)
+            
+            # Nếu tìm thấy hàng đúng ý -> Trả về luôn
+            if results: 
+                print(f"   => ✅ Tìm thấy {len(results)} kết quả chính xác.")
+                return results
+                
+        except Exception as e:
+            print(f"   => ⚠️ Lỗi search strict: {e}")
+
+        # --- CHIẾN THUẬT 2: NỚI LỎNG GIÁ (Nếu bước 1 không ra gì) ---
+        # Chỉ giữ lại điều kiện Category (Loại bỏ điều kiện Giá)
+        print("   => ⚠️ Không tìm thấy hàng đúng giá. Đang nới lỏng bộ lọc...")
+        
+        fallback_conditions = []
+        if category: fallback_conditions.append({"category": category})
+        
+        # Nếu đang tìm Laptop mà kho hết Laptop 17tr -> Tìm đại Laptop bất kỳ (để AI có cái mà tư vấn)
+        fallback_filter = fallback_conditions[0] if fallback_conditions else None
+        
+        try:
+            results = self.vector_db.similarity_search(query, k=k, filter=fallback_filter)
+            print(f"   => 🔄 Tìm thấy {len(results)} kết quả thay thế (Khác giá).")
+            
+            # Đánh dấu vào metadata để AI biết đây là hàng thay thế
+            for doc in results:
+                doc.page_content += " [LƯU Ý: Sản phẩm này có giá khác mức khách yêu cầu, hãy tư vấn khéo léo]"
+                
             return results
         except Exception as e:
-            print(f"❌ Lỗi tìm kiếm ChromaDB: {e}")
-            return self.vector_db.similarity_search(query, k=k)
+            print(f"   => ❌ Lỗi search fallback: {e}")
+            return []

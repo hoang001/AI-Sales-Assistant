@@ -15,12 +15,6 @@
   flex-direction: column;
   min-width: 0;
   width: 100%;
-  transition: all 0.4s cubic-bezier(0.2, 0.9, 0.2, 1);
-}
-
-.chat-section.with-panel {
-  width: 60%;
-  margin-right: 40%;
 }
 
 /* ===== CHAT CONTENT ===== */
@@ -53,7 +47,7 @@
 }
 
 .messages-area {
-  max-width: 800px;
+  max-width: 1200px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;

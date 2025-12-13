@@ -342,9 +342,21 @@ def crawl_product(url):
 if __name__ == "__main__":
     # Danh sách URL Demo
     category_urls = [
-        "https://cellphones.com.vn/mobile/apple/iphone-15.html",
-        "https://cellphones.com.vn/tablet/ipad-pro.html",
-        "https://cellphones.com.vn/laptop/mac/macbook-air.html"
+        # --- LAPTOP GAMING & SINH VIÊN (QUAN TRỌNG) ---
+        "https://cellphones.com.vn/laptop/asus.html",
+        "https://cellphones.com.vn/laptop/acer.html",
+        "https://cellphones.com.vn/laptop/lenovo.html",
+        "https://cellphones.com.vn/laptop/dell.html",
+        "https://cellphones.com.vn/laptop/hp.html",
+        "https://cellphones.com.vn/laptop/msi.html",
+        
+        # --- MACBOOK (Giữ lại) ---
+        "https://cellphones.com.vn/laptop/mac.html",
+
+        # --- ĐIỆN THOẠI (Để đa dạng) ---
+        "https://cellphones.com.vn/mobile/apple.html",
+        "https://cellphones.com.vn/mobile/samsung.html",
+        "https://cellphones.com.vn/mobile/xiaomi.html"
     ]
 
     print("Bắt đầu quá trình khám phá link sản phẩm...")

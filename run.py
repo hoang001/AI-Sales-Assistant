@@ -9,8 +9,9 @@ if __name__ == "__main__":
     print("\n" + "="*60)
     print("🚀  AI SALES ASSISTANT - BACKEND PRO STARTED")
     print("="*60)
-    print("👉  Server URL:      http://localhost:8000")
-    print("👉  Swagger UI:      http://localhost:8000/docs")
+    port = int(os.getenv('PORT', '8000'))
+    print(f"👉  Server URL:      http://localhost:{port}")
+    print(f"👉  Swagger UI:      http://localhost:{port}/docs")
     print("="*60 + "\n")
 
     # Chạy server (trỏ vào file main.py nằm trong thư mục src)

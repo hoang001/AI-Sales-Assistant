@@ -5,39 +5,48 @@ from .prompts import sales_system_instruction
 
 class AgentManager:
     def __init__(self):
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        
-        model_name = 'gemini-2.5-flash-lite' 
-        
-        print(f"🤖 Đang khởi tạo AI Model: {model_name}...")
-        self.model = genai.GenerativeModel(
-            model_name=model_name,
-            tools=defined_tools,
-            system_instruction=sales_system_instruction
-        )
+        # Không khởi tạo ngay để tránh lỗi import
+        self.model = None
         self.sessions = {}
 
+    def _initialize_model(self):
+        if self.model is None:
+            if not settings.GEMINI_API_KEY:
+                raise ValueError("Chưa cấu hình GEMINI_API_KEY")
+            
+            genai.configure(api_key=settings.GEMINI_API_KEY)
+            
+            # --- CẤU HÌNH QUAN TRỌNG ---
+            generation_config = {
+                "temperature": 0,        # BẮT BUỘC = 0 để AI không tự sửa văn bản
+                "top_p": 1,
+                "max_output_tokens": 8192,
+            }
+            # ---------------------------
+
+            self.model = genai.GenerativeModel(
+                model_name='gemini-2.5-flash-lite',
+                tools=defined_tools,
+                generation_config=generation_config, # Áp dụng cấu hình
+                system_instruction=sales_system_instruction
+            )
+
     def get_response(self, user_id: str, message: str):
-        # Tạo session mới nếu chưa có
-        if user_id not in self.sessions:
-            print(f"✨ New Session: {user_id}")
-            self.sessions[user_id] = self.model.start_chat(history=[], enable_automatic_function_calling=True)
-        
         try:
-            # Gửi tin nhắn cho AI
-            response = self.sessions[user_id].send_message(message)
+            self._initialize_model()
+            
+            if user_id not in self.sessions:
+                # Bắt đầu session mới
+                self.sessions[user_id] = self.model.start_chat(history=[], enable_automatic_function_calling=True)
+            
+            # Gửi tin nhắn
+            chat = self.sessions[user_id]
+            response = chat.send_message(message)
             return response.text
-            
+
         except Exception as e:
-            error_msg = str(e)
-            print(f"\n❌ LỖI NGHIÊM TRỌNG TẠI AGENT: {error_msg}\n")
-            
-            # Xóa session bị lỗi để lần sau khách chat sẽ tạo session mới sạch sẽ
-            if user_id in self.sessions:
-                del self.sessions[user_id]
-            
-            # Trả về thông báo lỗi cụ thể để debug trên Swagger/Frontend
-            # (Sau này chạy thật thì có thể sửa lại câu xin lỗi sau)
-            return f"⚠️ Lỗi hệ thống: {error_msg}"
+            print(f"❌ LỖI AGENT: {e}")
+            if user_id in self.sessions: del self.sessions[user_id]
+            return f"⚠️ Lỗi xử lý: {str(e)}"
 
 agent_manager = AgentManager()
