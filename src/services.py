@@ -73,31 +73,23 @@ class StoreService:
                 # 4. Tính giá khuyến mãi
                 final_price = original_price * (1 - discount/100)
                 
+                # Logic: Luôn bắt đầu bằng icon tiền để Frontend dễ bắt
                 if discount > 0:
-                    price_display = f"🔥 **{final_price:,.0f}đ** (Giảm {discount}% - Gốc: ~{original_price:,.0f}đ~)"
+                    price_str = f"{final_price:,.0f}đ"
                 else:
-                    price_display = f"💰 **{original_price:,.0f}đ**"
+                    price_str = f"{original_price:,.0f}đ"
                 
-                # 5. Tạo Markdown chuẩn (Frontend bắt buộc phải theo format này để render thẻ)
-                # Format: **Tên** \n ![Ảnh](URL) \n - Giá \n - Rating \n - Thông số \n - Mô tả
+                # 5. Tạo Markdown chuẩn (Frontend bắt buộc phải theo format này)
+                # QUAN TRỌNG: Phải có chữ "Giá:", "Đánh giá:", "Thông số:", "Mô tả:"
                 response_text += f"""
 **{name}**
 ![{name}]({img_url})
-- {price_display}
-- {star_icon} **{rating}/5** ({reviews} đánh giá)
+- 💰 Giá: {price_str}
+- ⭐ Đánh giá: {rating}/5 ({reviews} đánh giá)
 - ⚙️ Thông số: {short_specs}
-- 📝 *{doc.page_content[:100]}...*
+- 📝 Mô tả: {doc.page_content[:150]}...
 ---
 """
-            else:
-                print(f"❌ Không tìm thấy trong SQL: {name} (Sẽ mất ảnh)")
-                # Fallback: Trả về thông tin cơ bản từ Vector DB nếu không khớp SQL
-                price_vec = doc.metadata.get('price', 0)
-                response_text += f"- **{name}** (Giá tham khảo: {price_vec:,.0f}đ)\n"
-
-        conn.close()
-        return response_text
-
     def check_stock(self, product_name: str):
         """Kiểm tra tồn kho"""
         conn = db_manager.get_connection()

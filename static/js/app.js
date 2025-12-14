@@ -143,62 +143,63 @@ async function sendMessage(msgOverride = null) {
     }
 }
 
-// 4. PARSER NÂNG CAO (Đã sửa đổi để hiển thị ảnh bên cạnh thông tin)
+
 function processBackendResponse(markdownText) {
     let html = markdownText;
 
-    // 1. Định nghĩa Regex để bắt trọn khối sản phẩm theo định dạng từ Backend
-    // Định dạng: **Tên** \n ![Alt](URL) \n - 💰 Giá: ... \n - ⭐ Đánh giá: ... \n - 📝 Mô tả: ...
-    // Sử dụng cờ 'g' (global) để thay thế tất cả các sản phẩm tìm thấy
-    const productBlockRegex = /\*\*(.*?)\*\*\n\s*!\[(.*?)\]\((.*?)\)\n\s*-\s*💰\s*Giá:\s*(.*?)\n\s*-\s*⭐\s*Đánh giá:\s*(.*?)\n\s*-\s*📝\s*Mô tả:\s*(.*?)(?=(\n\s*---\s*\n|$))/g;
+    // 1. Regex MỚI: Bắt thêm dòng "Thông số" (⚙️)
+    // Cấu trúc bắt buộc: **Tên** -> Ảnh -> Giá -> Đánh giá -> Thông số -> Mô tả
+    const productBlockRegex = /\*\*(.*?)\*\*\s*\n\s*!\[(.*?)\]\((.*?)\)\s*\n\s*-\s*💰\s*Giá:\s*(.*?)\s*\n\s*-\s*⭐\s*Đánh giá:\s*(.*?)\s*\n\s*-\s*⚙️\s*Thông số:\s*(.*?)\s*\n\s*-\s*📝\s*Mô tả:\s*(.*?)(?=(\n\s*---|[\s\S]*$))/g;
 
-    // 2. Thay thế khối markdown bằng HTML của thẻ sản phẩm nằm ngang
-    // Hàm replace sẽ chạy cho mỗi lần tìm thấy một khối sản phẩm
-    html = html.replace(productBlockRegex, (match, name, alt, imgUrl, price, ratingStr, description) => {
-        const rating = ratingStr.split('/')[0] || '4.5'; // Lấy số sao
+    let hasProduct = false;
+
+    // 2. Thay thế Markdown bằng HTML thẻ sản phẩm
+    html = html.replace(productBlockRegex, (match, name, alt, imgUrl, price, ratingStr, specs, description) => {
+        hasProduct = true;
+        const rating = ratingStr.split('/')[0] || '4.5';
         
-        // Tạo object dữ liệu để truyền vào nút "Chi tiết"
         const productData = {
             name: name.trim(),
             imgUrl: imgUrl.trim(),
             price: price.trim(),
             rating: rating.trim(),
-            description: description.trim()
+            description: description.trim(),
+            specs: specs.trim() // Thêm thông số vào dữ liệu
         };
-        // Mã hóa dữ liệu để truyền an toàn trong thuộc tính onclick
         const encodedData = encodeURIComponent(JSON.stringify(productData));
 
-        // HTML cho thẻ sản phẩm nằm ngang (Sử dụng inline CSS để đảm bảo hiển thị đúng mà không cần sửa file CSS)
-        // Layout: Flexbox, ảnh bên trái, thông tin bên phải
         return `
-            <div class="product-card-inline" style="display: flex; gap: 15px; margin: 20px 0; background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(10px); padding: 15px; border-radius: 16px; border: 1px solid rgba(37, 99, 235, 0.1); box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: transform 0.2s;">
-                <div class="product-image-inline" style="flex-shrink: 0; width: 140px; height: 140px; border-radius: 12px; overflow: hidden; background: #fff; display: flex; align-items: center; justify-content: center;">
+            <div class="product-card-inline" style="display: flex; gap: 15px; margin: 20px 0; background: rgba(255, 255, 255, 0.9); padding: 15px; border-radius: 16px; border: 1px solid #eee; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                <div class="product-image-inline" style="flex-shrink: 0; width: 120px; height: 120px; border-radius: 12px; overflow: hidden; background: #fff; display: flex; align-items: center; justify-content: center; border: 1px solid #f0f0f0;">
                     <img src="${productData.imgUrl}" alt="${productData.name}" style="width: 100%; height: 100%; object-fit: contain;">
                 </div>
-                <div class="product-info-inline" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
-                    <div class="product-name-inline" style="font-size: 17px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary); line-height: 1.3;">${productData.name}</div>
-                    <div class="product-price-inline" style="font-size: 16px; font-weight: 700; color: var(--primary-color); margin-bottom: 8px;">${productData.price}</div>
-                    <div class="product-rating-inline" style="font-size: 14px; color: var(--text-secondary); margin-bottom: 8px; display: flex; align-items: center;">
-                        <span style="color: #ffd700; margin-right: 5px;">⭐</span> ${productData.rating}/5
+                <div class="product-info-inline" style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 5px;">
+                    <div style="font-size: 16px; font-weight: 700; color: #333;">${productData.name}</div>
+                    <div style="font-size: 15px; font-weight: 700; color: #d70018;">${productData.price}</div>
+                    
+                    <div style="font-size: 12px; color: #666; background: #f5f5f5; padding: 4px 8px; border-radius: 4px; display: inline-block;">
+                        ⚙️ ${productData.specs}
                     </div>
-                    <div class="product-desc-inline" style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; opacity: 0.9;">
-                        ${productData.description}
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                        <div style="font-size: 13px; color: #666;">⭐ ${productData.rating}/5</div>
+                        <button onclick="window.openProductPanel('${encodedData}')" style="padding: 6px 15px; font-size: 13px; border: none; background: #007bff; color: white; border-radius: 20px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 5px rgba(0,123,255,0.3);">
+                            Xem chi tiết
+                        </button>
                     </div>
-                    <button class="btn-details-inline" onclick="window.openProductPanel('${encodedData}')" style="align-self: flex-start; padding: 8px 16px; font-size: 14px; border: none; background: var(--gradient-primary); color: white; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);">
-                        Xem chi tiết
-                    </button>
                 </div>
             </div>
         `;
     });
 
-    // 3. Xóa các dấu gạch ngang phân cách (---) còn sót lại trong markdown
-    html = html.replace(/\n\s*---\s*\n/g, '\n');
+    // 3. Xử lý text thường (nếu không phải sản phẩm)
+    if (!hasProduct) {
+        html = html.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+        html = html.replace(/\n/g, '<br>');
+    } else {
+        html = html.replace(/\n\s*---\s*\n/g, '');
+    }
 
-    // 4. Format các phần văn bản còn lại (in đậm, in nghiêng, xuống dòng)
-    html = formatText(html);
-
-    // 5. Hiển thị toàn bộ nội dung đã xử lý (text + thẻ sản phẩm) trong một tin nhắn duy nhất
     addBotMessageHTML(html);
 }
 
