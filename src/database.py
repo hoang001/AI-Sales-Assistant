@@ -2,7 +2,7 @@
 import sqlite3
 import json
 import logging
-import random # <--- THÊM MODULE NÀY
+import random
 from .config import settings
 
 logging.basicConfig(level=logging.INFO)
@@ -19,7 +19,7 @@ class DatabaseManager:
         conn = self.get_connection()
         cursor = conn.cursor()
         
-        # 1. Thêm cột 'discount_rate' (tỉ lệ giảm giá %)
+        # 1. Tạo bảng products với cột image_url
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS products (
                 id TEXT PRIMARY KEY,
@@ -27,12 +27,15 @@ class DatabaseManager:
                 price_int INTEGER,
                 stock INTEGER,
                 category TEXT,
-                rag_content TEXT,
-                discount_rate INTEGER DEFAULT 0  
+                discount_rate INTEGER DEFAULT 0,
+                rating_avg REAL DEFAULT 0.0,
+                review_count INTEGER DEFAULT 0,
+                image_url TEXT,
+                rag_content TEXT
             )
         ''')
         
-        # (Giữ nguyên đoạn tạo bảng orders...)
+        # Tạo bảng orders
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS orders (
                 order_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,9 +67,21 @@ class DatabaseManager:
                         # -------------------------------
 
                         cursor.execute('''
-                            INSERT OR IGNORE INTO products (id, name, price_int, stock, category, rag_content, discount_rate)
-                            VALUES (?, ?, ?, ?, ?, ?, ?)
-                        ''', (p_id, item.get("name"), item.get("price_int"), 10, item.get("category"), item.get("rag_content"), discount))
+                            INSERT OR IGNORE INTO products 
+                            (id, name, price_int, stock, category, image_url, rag_content, discount_rate, rating_avg, review_count)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ''', (
+                            p_id,
+                            item.get("name"),
+                            item.get("price_int"),
+                            10,
+                            item.get("category"),
+                            item.get("image_url", "https://via.placeholder.com/300x300?text=No+Image"),
+                            item.get("rag_content"),
+                            discount,
+                            item.get("rating_avg", 0),
+                            item.get("review_count", 0)
+                        ))
                     conn.commit()
             except Exception as e:
                 logger.error(f"Lỗi nạp dữ liệu: {e}")
