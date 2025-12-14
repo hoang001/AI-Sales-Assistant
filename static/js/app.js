@@ -4,6 +4,8 @@ let messageInput, sendBtn, attachBtn, messagesArea, chatContent, filePreviewArea
 let selectedFile = null;
 let messageCount = 0;
 
+const API_URL = "https://faddiest-overcasuistical-mollie.ngrok-free.dev";
+
 // 1. KHỞI TẠO
 document.addEventListener('DOMContentLoaded', () => {
     console.log('AI Assistant Ready - V3 UI');
@@ -85,34 +87,40 @@ function setupEventListeners() {
 }
 
 // 3. LOGIC GỬI TIN
-async function sendMessage() {
-    const text = messageInput.value.trim();
+// 3. LOGIC GỬI TIN
+async function sendMessage(msgOverride = null) {
+    // Nếu có tin nhắn đè (ví dụ từ nút GPS), dùng nó. Nếu không, lấy từ ô nhập liệu.
+    const text = msgOverride || messageInput.value.trim();
+    
     if (!text && !selectedFile) return;
 
-    const currentText = text;
-    messageInput.value = '';
-    autoResizeTextarea();
+    // Nếu là tin nhắn người dùng nhập tay thì xóa ô nhập
+    if (!msgOverride) {
+        messageInput.value = '';
+        autoResizeTextarea();
+    }
     
-    // Ẩn welcome
+    // Ẩn welcome screen
     const welcome = document.querySelector('.welcome-message');
     if(welcome) welcome.style.display = 'none';
 
-    // UI: User Message
-    addUserMessage(currentText);
+    // UI: Hiển thị tin nhắn người dùng (Chỉ hiện nếu không phải là lệnh ngầm GPS)
+    if (!text.startsWith("GPS:")) {
+        addUserMessage(text);
+    }
+    
     showTypingIndicator();
-
-    // UX: Disable nút gửi
     setLoadingState(true);
 
     try {
         const userId = localStorage.getItem("chat_session_id");
         
-        // Gọi API
-        const response = await fetch("/chat", {
+        // 👇 QUAN TRỌNG: Sửa đường dẫn fetch thành API_URL
+        const response = await fetch(`${API_URL}/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                message: currentText,
+                message: text,
                 user_id: userId
             })
         });
@@ -124,14 +132,12 @@ async function sendMessage() {
         const data = await response.json();
         
         hideTypingIndicator();
-        
-        // Xử lý và hiển thị phản hồi
         processBackendResponse(data.response);
 
     } catch (error) {
         hideTypingIndicator();
         console.error("API Error:", error);
-        addBotMessageHTML(`⚠️ <strong>Lỗi kết nối:</strong> ${error.message}. Vui lòng kiểm tra lại server.`);
+        addBotMessageHTML(`⚠️ <strong>Lỗi kết nối:</strong> Không thể gọi tới Backend (${API_URL}). <br>Bạn đã bật Ngrok chưa?`);
     } finally {
         setLoadingState(false);
     }
@@ -382,41 +388,36 @@ window.handleConsulting = function(productName, needCompare = false) {
 };
 
 // --- XỬ LÝ NÚT TÌM CỬA HÀNG (UPDATED FOR GOOGLE MAPS API) ---
+// --- XỬ LÝ NÚT TÌM CỬA HÀNG ---
 window.handleFindStore = function () {
     if (!navigator.geolocation) {
         addBotMessageHTML("⚠️ Trình duyệt không hỗ trợ định vị.");
         return;
     }
 
-    addBotMessageHTML(
-      '<i style="color:#666;">📍 Đang xác định vị trí của bạn...</i>'
-    );
+    addBotMessageHTML('<div style="color:#666; font-style:italic;">📍 Đang xác định vị trí... (Vui lòng chọn Allow)</div>');
 
     const options = {
-        enableHighAccuracy: false,
-        timeout: 20000,
-        maximumAge: 60000
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
     };
 
     navigator.geolocation.getCurrentPosition(
         (pos) => {
-            const { latitude, longitude } = pos.coords;
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
 
-            addUserMessage("📍 Tìm cửa hàng CellPhoneS gần nhất");
+            // UI: Báo cho người dùng biết đã gửi
+            addUserMessage("📍 Đã gửi vị trí hiện tại.");
 
-            sendMessage(JSON.stringify({
-                type: "location",
-                lat: latitude,
-                lng: longitude
-            }));
+            // Gửi tọa độ về Backend theo đúng format "GPS:..."
+            sendMessage(`GPS:${lat},${lon}`);
         },
         (err) => {
             let msg = "Không thể lấy vị trí.";
-            if (err.code === 1) msg = "Bạn đã từ chối quyền truy cập vị trí.";
-            if (err.code === 2) msg = "Không xác định được vị trí.";
-            if (err.code === 3) msg = "Lấy vị trí quá lâu, vui lòng thử lại.";
-
-            addBotMessageHTML(`⚠️ ${msg}`);
+            if (err.code === 1) msg = "Bạn đã từ chối quyền vị trí.";
+            addBotMessageHTML(`⚠️ ${msg} Vui lòng nhập: <b>"Tìm cửa hàng ở [Tên Quận]"</b>`);
         },
         options
     );
