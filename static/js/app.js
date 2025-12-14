@@ -144,59 +144,82 @@ async function sendMessage(msgOverride = null) {
 }
 
 
-function processBackendResponse(markdownText) {
-    let html = markdownText;
 
-    // 1. Regex MỚI: Bắt thêm dòng "Thông số" (⚙️)
-    // Cấu trúc bắt buộc: **Tên** -> Ảnh -> Giá -> Đánh giá -> Thông số -> Mô tả
-    const productBlockRegex = /\*\*(.*?)\*\*\s*\n\s*!\[(.*?)\]\((.*?)\)\s*\n\s*-\s*💰\s*Giá:\s*(.*?)\s*\n\s*-\s*⭐\s*Đánh giá:\s*(.*?)\s*\n\s*-\s*⚙️\s*Thông số:\s*(.*?)\s*\n\s*-\s*📝\s*Mô tả:\s*(.*?)(?=(\n\s*---|[\s\S]*$))/g;
+function processBackendResponse(markdownText) {
+    // 1. CHUẨN HÓA DỮ LIỆU (QUAN TRỌNG)
+    // Chuyển đổi tất cả các kiểu xuống dòng (\r\n, \r) thành \n chuẩn
+    let html = markdownText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    // 2. REGEX NÂNG CẤP (LINH HOẠT HƠN)
+    // - \s* : Chấp nhận mọi khoảng trắng hoặc xuống dòng thừa
+    // - (?:...)? : Nhóm không bắt buộc (để tránh lỗi nếu thiếu dòng "Thông số")
+    // - [\s\S]*? : Lấy nội dung mô tả kể cả khi có xuống dòng
+    const productBlockRegex = /\*\*(.*?)\*\*\s*\n\s*!\[(.*?)\]\((.*?)\)\s*\n\s*-\s*💰\s*Giá:\s*(.*?)\s*\n\s*-\s*⭐\s*Đánh giá:\s*(.*?)\s*\n(?:\s*-\s*⚙️\s*Thông số:\s*(.*?)\s*\n)?\s*-\s*📝\s*Mô tả:\s*([\s\S]*?)(?=(\n\s*---|[\s\S]*$))/g;
 
     let hasProduct = false;
 
-    // 2. Thay thế Markdown bằng HTML thẻ sản phẩm
+    // 3. THAY THẾ MARKDOWN BẰNG HTML THẺ SẢN PHẨM
     html = html.replace(productBlockRegex, (match, name, alt, imgUrl, price, ratingStr, specs, description) => {
         hasProduct = true;
-        const rating = ratingStr.split('/')[0] || '4.5';
         
+        // Xử lý rating (Lấy số sao đầu tiên)
+        const rating = ratingStr ? ratingStr.split('/')[0].trim() : '4.5';
+        
+        // Tạo object dữ liệu
         const productData = {
             name: name.trim(),
             imgUrl: imgUrl.trim(),
             price: price.trim(),
-            rating: rating.trim(),
+            rating: rating,
             description: description.trim(),
-            specs: specs.trim() // Thêm thông số vào dữ liệu
+            specs: specs ? specs.trim() : "" // Nếu không có thông số thì để rỗng
         };
+        
         const encodedData = encodeURIComponent(JSON.stringify(productData));
 
+        // Render HTML (Card nằm ngang giống ảnh 2)
         return `
-            <div class="product-card-inline" style="display: flex; gap: 15px; margin: 20px 0; background: rgba(255, 255, 255, 0.9); padding: 15px; border-radius: 16px; border: 1px solid #eee; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-                <div class="product-image-inline" style="flex-shrink: 0; width: 120px; height: 120px; border-radius: 12px; overflow: hidden; background: #fff; display: flex; align-items: center; justify-content: center; border: 1px solid #f0f0f0;">
+            <div class="product-card-inline" style="display: flex; gap: 15px; margin: 15px 0; background: #fff; padding: 12px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e0e0e0; align-items: start;">
+                
+                <div class="product-image-inline" style="flex-shrink: 0; width: 120px; height: 120px; border-radius: 8px; overflow: hidden; background: #fff; display: flex; align-items: center; justify-content: center; border: 1px solid #f0f0f0;">
                     <img src="${productData.imgUrl}" alt="${productData.name}" style="width: 100%; height: 100%; object-fit: contain;">
                 </div>
-                <div class="product-info-inline" style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 5px;">
-                    <div style="font-size: 16px; font-weight: 700; color: #333;">${productData.name}</div>
+
+                <div class="product-info-inline" style="flex: 1; display: flex; flex-direction: column; gap: 5px;">
+                    <div style="font-size: 16px; font-weight: 700; color: #333; line-height: 1.3;">${productData.name}</div>
+                    
                     <div style="font-size: 15px; font-weight: 700; color: #d70018;">${productData.price}</div>
                     
-                    <div style="font-size: 12px; color: #666; background: #f5f5f5; padding: 4px 8px; border-radius: 4px; display: inline-block;">
-                        ⚙️ ${productData.specs}
+                    <div style="font-size: 13px; color: #666; display: flex; align-items: center;">
+                        <span style="color: #ffd700; margin-right: 4px;">⭐</span> ${productData.rating}/5
                     </div>
 
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
-                        <div style="font-size: 13px; color: #666;">⭐ ${productData.rating}/5</div>
-                        <button onclick="window.openProductPanel('${encodedData}')" style="padding: 6px 15px; font-size: 13px; border: none; background: #007bff; color: white; border-radius: 20px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 5px rgba(0,123,255,0.3);">
-                            Xem chi tiết
-                        </button>
+                    ${productData.specs ? 
+                        `<div style="font-size: 12px; background: #f4f6f8; padding: 4px 8px; border-radius: 4px; color: #555; margin-top: 2px;">
+                            ⚙️ ${productData.specs}
+                        </div>` : ''
+                    }
+
+                    <div style="font-size: 13px; color: #555; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                        ${productData.description}
                     </div>
+                    
+                    <button onclick="window.openProductPanel('${encodedData}')" 
+                        style="align-self: flex-start; margin-top: 8px; padding: 6px 14px; font-size: 13px; border: none; background: #007bff; color: white; border-radius: 6px; cursor: pointer; font-weight: 500; transition: background 0.2s; box-shadow: 0 2px 4px rgba(0,123,255,0.2);">
+                        Xem chi tiết
+                    </button>
                 </div>
             </div>
         `;
     });
 
-    // 3. Xử lý text thường (nếu không phải sản phẩm)
+    // 4. NẾU KHÔNG PHẢI SẢN PHẨM -> FORMAT TEXT THƯỜNG
     if (!hasProduct) {
+        // In đậm, in nghiêng, xuống dòng
         html = html.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
         html = html.replace(/\n/g, '<br>');
     } else {
+        // Xóa các dấu phân cách --- thừa
         html = html.replace(/\n\s*---\s*\n/g, '');
     }
 

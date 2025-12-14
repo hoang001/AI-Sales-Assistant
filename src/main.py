@@ -36,32 +36,43 @@ class ChatInput(BaseModel):
     message: str
     user_id: str = "guest"
 
+
 @app.post("/chat")
 async def chat(inp: ChatInput):
     message = inp.message.strip()
     user_id = inp.user_id
 
-    print(f"📩 Nhận tin nhắn: {message}") # Log để debug
+    print(f"📩 Nhận tin nhắn: {message}")
 
     # ===============================
-    # CASE 1: XỬ LÝ GPS TỪ FRONTEND
-    # (Frontend gửi dạng: "GPS:21.033,105.84")
+    # 🎯 TRƯỜNG HỢP 1: XỬ LÝ ĐỊNH VỊ GPS (Nút bấm trên Frontend)
     # ===============================
     if message.startswith("GPS:"):
-        # Gọi hàm tìm cửa hàng trong services.py (đã tích hợp Google Maps/SerpApi)
-        reply = store_service.find_stores(message)
-        return {"response": reply}
+        try:
+            # Tách lấy tọa độ từ chuỗi "GPS:21.02,105.83"
+            _, coords = message.split(":")
+            lat, lng = coords.split(",")
+            
+            # Gọi hàm find_nearest_store trong services.py (Dùng SerpApi)
+            # Hàm này bạn đã có trong file services.py cũ
+            reply = store_service.find_nearest_store(float(lat), float(lng))
+            
+            return {"response": reply}
+            
+        except Exception as e:
+            print(f"❌ Lỗi GPS: {e}")
+            return {"response": "⚠️ Xin lỗi, không thể xác định vị trí của bạn lúc này."}
 
     # ===============================
-    # CASE 2: CHAT BÌNH THƯỜNG (AI)
+    # 🤖 TRƯỜNG HỢP 2: CHAT VỚI AI (Các câu hỏi thường)
     # ===============================
+    # Nếu khách hỏi "Tìm cửa hàng ở Cầu Giấy" -> AI sẽ tự gọi tool find_stores (tìm theo tên)
     try:
         reply = agent_manager.get_response(user_id, message)
         return {"response": reply}
     except Exception as e:
         print(f"❌ Lỗi AI: {e}")
-        return {"response": "Xin lỗi, hệ thống đang bận. Bạn thử lại sau nhé!"}
-
+        return {"response": "Hệ thống đang bận, vui lòng thử lại sau."}
 
 # --- 3. TRANG CHỦ ---
 @app.get("/")

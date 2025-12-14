@@ -175,6 +175,53 @@ def find_nearest_store(self, lat: float, lng: float):
 
     except Exception as e:
         return f"⚠️ Lỗi khi kết nối Google Maps: {str(e)}"
+    
+
+
+
+def find_stores(self, location: str):
+        """
+        Tìm cửa hàng theo tên địa điểm (Quận/Huyện)
+        """
+        print(f"📍 Đang tìm cửa hàng tại: {location}")
+        
+        # Dùng lại cấu hình của SerpAPI nhưng thay đổi tham số tìm kiếm
+        params = {
+            "engine": "google_maps",
+            "q": f"CellphoneS {location}", # Tìm "CellphoneS + Cầu Giấy"
+            "type": "search",
+            "api_key": settings.SERP_API_KEY,
+            "hl": "vi"
+        }
+
+        try:
+            response = requests.get("https://serpapi.com/search.json", params=params, timeout=10)
+            data = response.json()
+            results = data.get("local_results", [])
+
+            if not results:
+                return f"❌ Không tìm thấy cửa hàng CellphoneS nào ở khu vực '{location}' ạ."
+
+            # Lấy tối đa 3 cửa hàng để hiển thị cho gọn
+            response_text = f"📍 **Danh sách cửa hàng tại {location}:**\n\n"
+            
+            for store in results[:3]:
+                name = store.get("title")
+                address = store.get("address")
+                rating = store.get("rating", "4.5")
+                
+                # Tạo link Google Maps
+                gps = store.get("gps_coordinates", {})
+                lat = gps.get("latitude")
+                lng = gps.get("longitude")
+                map_url = f"http://maps.google.com/?q={lat},{lng}"
+
+                response_text += f"🏠 **{name}**\n- 📍 {address}\n- ⭐ {rating}/5\n- 🗺️ [Xem bản đồ]({map_url})\n\n"
+            
+            return response_text
+
+        except Exception as e:
+            return f"⚠️ Lỗi tìm kiếm cửa hàng: {str(e)}"
 
 
 store_service = StoreService()
