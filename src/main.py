@@ -84,18 +84,31 @@ async def proxy_image(url: str = Query(..., description="URL của ảnh cần p
     Giải quyết vấn đề Mixed Content khi frontend HTTPS load ảnh HTTP.
     """
     try:
+        print(f"DEBUG: Received proxy request for URL: {url}")
+
+        # Decode URL if it's encoded
+        decoded_url = urllib.parse.unquote(url)
+        print(f"DEBUG: Decoded URL: {decoded_url}")
+
         # Validate URL
-        parsed_url = urllib.parse.urlparse(url)
+        parsed_url = urllib.parse.urlparse(decoded_url)
         if not parsed_url.scheme or not parsed_url.netloc:
+            print(f"DEBUG: Invalid URL structure: scheme={parsed_url.scheme}, netloc={parsed_url.netloc}")
             raise HTTPException(status_code=400, detail="URL không hợp lệ")
+
+        print(f"DEBUG: URL validated, fetching from: {decoded_url}")
 
         # Fetch ảnh từ URL gốc
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
-        response = requests.get(url, headers=headers, timeout=10, stream=True)
+        response = requests.get(decoded_url, headers=headers, timeout=10, stream=True)
+
+        print(f"DEBUG: External response status: {response.status_code}")
+        print(f"DEBUG: External response headers: {dict(response.headers)}")
 
         if response.status_code != 200:
+            print(f"DEBUG: Failed to fetch image, status: {response.status_code}")
             raise HTTPException(status_code=response.status_code, detail="Không thể tải ảnh")
 
         # Trả về ảnh với headers phù hợp
@@ -109,10 +122,10 @@ async def proxy_image(url: str = Query(..., description="URL của ảnh cần p
         )
 
     except requests.exceptions.RequestException as e:
-        print(f"Loi proxy anh: {e}")
+        print(f"Loi proxy anh (request): {e}")
         raise HTTPException(status_code=500, detail="Loi tai anh")
     except Exception as e:
-        print(f"Loi proxy anh: {e}")
+        print(f"Loi proxy anh (general): {e}")
         raise HTTPException(status_code=500, detail="Loi xu ly anh")
 
 # --- 4. TRANG CHỦ ---
