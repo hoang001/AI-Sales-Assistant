@@ -140,14 +140,28 @@ class StoreService:
         )
         return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
-        
+
 def find_nearest_store(self, lat: float, lng: float):
+    import math
+    import requests
 
-
-    #"Tìm cửa hàng CellphoneS gần nhất bằng Google Places API (v1)"
     api_key = getattr(settings, "PLACES_API_KEY", None)
     if not api_key:
-        return "Chưa cấu hình PLACES_API_KEY!"
+        return "<b>⚠️ Chưa cấu hình PLACES_API_KEY</b>"
+
+    # -----------------------
+    # Hàm tính khoảng cách
+    # -----------------------
+    def haversine(lat1, lng1, lat2, lng2):
+        R = 6371
+        phi1, phi2 = math.radians(lat1), math.radians(lat2)
+        dphi = math.radians(lat2 - lat1)
+        dlambda = math.radians(lng2 - lng1)
+        a = (
+            math.sin(dphi / 2) ** 2
+            + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+        )
+        return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
     url = "https://places.googleapis.com/v1/places:searchText"
 
@@ -166,7 +180,8 @@ def find_nearest_store(self, lat: float, lng: float):
             "places.types,"
             "places.internationalPhoneNumber,"
             "places.reviews,"
-            "places.accessibilityOptions"
+            "places.accessibilityOptions,"
+            "places.photos"
         ),
     }
 
@@ -188,12 +203,10 @@ def find_nearest_store(self, lat: float, lng: float):
 
         places = data.get("places", [])
         if not places:
-            return "Không tìm thấy cửa hàng CellphoneS gần bạn."
+            return "<b>❌ Không tìm thấy cửa hàng CellphoneS gần bạn.</b>"
 
-        # ===============================
-        # LỌC + TÍNH KHOẢNG CÁCH
-        # ===============================
-        filtered = []
+        # Lọc đúng CellphoneS + tính khoảng cách
+        candidates = []
         for p in places:
             name = p.get("displayName", {}).get("text", "").lower()
             if "cellphones" in name:
@@ -202,85 +215,68 @@ def find_nearest_store(self, lat: float, lng: float):
                     p["_distance"] = haversine(
                         lat, lng, loc["latitude"], loc["longitude"]
                     )
-                    filtered.append(p)
+                    candidates.append(p)
 
-        if not filtered:
-            return "Không tìm thấy cửa hàng CellphoneS phù hợp gần bạn."
+        if not candidates:
+            return "<b>❌ Không có cửa hàng CellphoneS phù hợp.</b>"
 
-        shop = min(filtered, key=lambda x: x["_distance"])
+        shop = min(candidates, key=lambda x: x["_distance"])
 
-        # ===============================
-        # TRÍCH XUẤT THÔNG TIN
-        # ===============================
-        name = shop.get("displayName", {}).get("text", "N/A")
+        # -----------------------
+        # Trích xuất dữ liệu
+        # -----------------------
+        name = shop.get("displayName", {}).get("text", "CellphoneS")
         address = shop.get("formattedAddress", "N/A")
-
         location = shop.get("location", {})
-        lat_ = location.get("latitude")
-        lng_ = location.get("longitude")
+        lat_, lng_ = location.get("latitude"), location.get("longitude")
 
-        rating = shop.get("rating", "?")
-        user_ratings_total = shop.get("userRatingCount", 0)
+        rating = shop.get("rating", "N/A")
+        rating_count = shop.get("userRatingCount", 0)
         phone = shop.get("internationalPhoneNumber", "N/A")
-        website = shop.get("websiteUri", "N/A")
+        website = shop.get("websiteUri", "")
 
-        opening_hours = []
-        if "regularOpeningHours" in shop:
-            opening_hours = shop["regularOpeningHours"].get(
-                "weekdayDescriptions", []
-            )
-
-        reviews = shop.get("reviews", [])
-        if reviews:
-            review_texts = "\n".join(
-                [
-                    "- {}: {}...".format(
-                        r.get("authorAttribution", {}).get(
-                            "displayName", "Ẩn danh"
-                        ),
-                        r.get("originalText", {}).get("text", "")[:100],
-                    )
-                    for r in reviews[:3]
-                ]
-            )
-        else:
-            review_texts = "Chưa có đánh giá nổi bật."
-
-        amenities = []
-        if shop.get("accessibilityOptions", {}).get(
-            "wheelchairAccessibleParking"
-        ):
-            amenities.append("Có lối cho xe lăn")
-        if "parking" in str(shop.get("types", [])).lower():
-            amenities.append("Có bãi đỗ xe")
-        if "wifi" in str(shop.get("types", [])).lower():
-            amenities.append("Có Wi-Fi")
-
-        map_link = (
-            f"https://www.google.com/maps/search/?api=1&query={lat_},{lng_}"
+        opening_hours = shop.get("regularOpeningHours", {}).get(
+            "weekdayDescriptions", []
         )
 
-        result = f"""
-🏠 **{name}**
-- 📍 Địa chỉ: {address}
-- 📐 Khoảng cách: {shop["_distance"]:.2f} km
-- ☎️ Điện thoại: {phone}
-- 🌐 Website: {website}
-- ⭐ Đánh giá: {rating}/5 ({user_ratings_total} lượt)
-- 🕒 Giờ mở cửa:
-{chr(10).join(opening_hours) if opening_hours else "Chưa có thông tin"}
-- 🛠 Tiện ích: {", ".join(amenities) if amenities else "Đang cập nhật"}
-- 💬 Đánh giá nổi bật:
-{review_texts}
-- 🗺 [Xem trên Google Maps]({map_link})
-"""
+        # Ảnh cửa hàng
+        photo_url = ""
+        photos = shop.get("photos", [])
+        if photos:
+            photo_name = photos[0].get("name")
+            if photo_name:
+                photo_url = (
+                    f"https://places.googleapis.com/v1/{photo_name}/media"
+                    f"?key={api_key}&maxWidthPx=800"
+                )
 
-        return result.strip()
+        map_link = f"https://www.google.com/maps/search/?api=1&query={lat_},{lng_}"
+
+        # -----------------------
+        # HTML OUTPUT (QUAN TRỌNG)
+        # -----------------------
+        html = f"""
+<div class="store-card">
+    {f'<img src="{photo_url}" class="store-image" />' if photo_url else ''}
+    <h3>🏠 {name}</h3>
+    <p>📍 {address}</p>
+    <p>📐 Cách bạn <b>{shop["_distance"]:.2f} km</b></p>
+    <p>⭐ {rating}/5 ({rating_count} đánh giá)</p>
+    <p>☎️ {phone}</p>
+    {f'<p>🌐 <a href="{website}" target="_blank">{website}</a></p>' if website else ''}
+    <p>
+        🗺 <a href="{map_link}" target="_blank" rel="noopener noreferrer">
+            Xem trên Google Maps
+        </a>
+    </p>
+</div>
+"""
+        return html.strip()
 
     except requests.exceptions.RequestException as e:
-        return f"Lỗi kết nối đến Google Places API: {str(e)}"
+        return f"<b>❌ Lỗi kết nối Google Places API:</b> {e}"
     except Exception as e:
-        return f"Lỗi khi xử lý dữ liệu cửa hàng: {str(e)}"
+        return f"<b>❌ Lỗi xử lý dữ liệu:</b> {e}"
 
 
 
