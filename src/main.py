@@ -33,8 +33,8 @@ app.add_middleware(
 )
 
 # --- 1. MOUNT THƯ MỤC STATIC ---
-static_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
-app.mount("/static", StaticFiles(directory=static_path), name="static")
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
+
 
 # --- 2. API CHAT ---
 class ChatInput(BaseModel):
@@ -134,3 +134,7 @@ async def proxy_image(url: str = Query(..., description="URL của ảnh cần p
 @app.get("/")
 async def read_root():
     return FileResponse(os.path.join(static_path, "index.html"))
+# Thêm route cho favicon.ico để tránh lỗi 404
+@app.get('/favicon.ico', include_in_schema=False)
+async def favicon():
+    return FileResponse(os.path.join(static_path, "favicon.ico"))
