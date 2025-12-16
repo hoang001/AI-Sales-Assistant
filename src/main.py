@@ -25,14 +25,18 @@ app = FastAPI(title="AI Sales Assistant API")
 # ===============================
 # CORS
 # ===============================
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://ai-sales-assistant-hy8z.vercel.app",  # FE của bạn
+        "http://localhost:3000",                       # dev local
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"]
 )
+
 
 # ===============================
 # SCHEMA
