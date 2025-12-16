@@ -120,58 +120,57 @@ class StoreService:
         nfkd_form = unicodedata.normalize('NFKD', input_str)
         return "".join([c for c in nfkd_form if not unicodedata.combining(c)])
 
-
-def find_nearest_store(self, lat: float, lng: float):
-    """
-    Tìm cửa hàng gần nhất dùng Google Places API.
-    Trả về: Địa chỉ, toạ độ, điện thoại, website, giờ hoạt động, rating, review, tiện ích.
-    """
-    api_key = getattr(settings, "PLACES_API_KEY", None)
-    if not api_key:
-        return "Chưa cấu hình PLACES_API_KEY!"
-    url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
-    params = {
-        "key": api_key,
-        "keyword": "CellphoneS",
-        "location": f"{lat},{lng}",
-        "rankby": "distance",
-        "type": "store",
-        "language": "vi"
-    }
-    try:
-        resp = requests.get(url, params=params, timeout=10)
-        data = resp.json()
-        if not data.get("results"):
-            return "Không tìm thấy cửa hàng gần bạn."
-        shop = data["results"][0]  # Chỉ lấy cửa hàng gần nhất
-        name = shop.get("name", "N/A")
-        lat_ = shop["geometry"]["location"].get("lat") if "geometry" in shop else None
-        lng_ = shop["geometry"]["location"].get("lng") if "geometry" in shop else None
-        address = shop.get("vicinity", shop.get("formatted_address", "N/A"))
-        rating = shop.get("rating", "?")
-        place_id = shop.get("place_id")
-        user_ratings_total = shop.get("user_ratings_total", 0)
-        map_link = f"https://www.google.com/maps/place/?q=place_id:{place_id}" if place_id else ""
-        # Lấy chi tiết (điện thoại, website, review, tiện ích...)
-        details_url = "https://maps.googleapis.com/maps/api/place/details/json"
-        details_params = {"place_id": place_id, "fields": "formatted_phone_number,website,opening_hours,rating,review,types,wheelchair_accessible_entrance,child_friendly,parking,amenities", "key": api_key, "language": "vi"}
-        detail_resp = requests.get(details_url, params=details_params, timeout=10)
-        detail_result = detail_resp.json().get("result", {})
-        phone = detail_result.get("formatted_phone_number", "N/A")
-        website = detail_result.get("website", "N/A")
-        opening_hours = detail_result.get("opening_hours", {}).get("weekday_text", [])
-        reviews = detail_result.get("reviews", [])
-        # lấy tiện ích
-        amenities = []
-        if detail_result.get("wheelchair_accessible_entrance"): amenities.append("Có lối cho xe lăn")
-        if detail_result.get("child_friendly"): amenities.append("Thân thiện trẻ em")
-        if detail_result.get("parking"): amenities.append("Có bãi đỗ xe")
-        if "wifi" in json.dumps(detail_result).lower(): amenities.append("Có Wi-Fi")
-        # Format reviews ngắn
-        review_texts = "".join([f"- {r.get('author_name', '')}: '{r.get('text','')[:100]}'\n" for r in reviews[:3]]) if reviews else "Chưa có đánh giá nổi bật."
-        hours = "\n".join(opening_hours) if opening_hours else "Chưa có thông tin."
-        # Soạn kết quả
-        result = f"""
+    def find_nearest_store(self, lat: float, lng: float):
+        """
+        Tìm cửa hàng gần nhất dùng Google Places API.
+        Trả về: Địa chỉ, toạ độ, điện thoại, website, giờ hoạt động, rating, review, tiện ích.
+        """
+        api_key = getattr(settings, "PLACES_API_KEY", None)
+        if not api_key:
+            return "Chưa cấu hình PLACES_API_KEY!"
+        url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+        params = {
+            "key": api_key,
+            "keyword": "CellphoneS",
+            "location": f"{lat},{lng}",
+            "rankby": "distance",
+            "type": "store",
+            "language": "vi"
+        }
+        try:
+            resp = requests.get(url, params=params, timeout=10)
+            data = resp.json()
+            if not data.get("results"):
+                return "Không tìm thấy cửa hàng gần bạn."
+            shop = data["results"][0]  # Chỉ lấy cửa hàng gần nhất
+            name = shop.get("name", "N/A")
+            lat_ = shop["geometry"]["location"].get("lat") if "geometry" in shop else None
+            lng_ = shop["geometry"]["location"].get("lng") if "geometry" in shop else None
+            address = shop.get("vicinity", shop.get("formatted_address", "N/A"))
+            rating = shop.get("rating", "?")
+            place_id = shop.get("place_id")
+            user_ratings_total = shop.get("user_ratings_total", 0)
+            map_link = f"https://www.google.com/maps/place/?q=place_id:{place_id}" if place_id else ""
+            # Lấy chi tiết (điện thoại, website, review, tiện ích...)
+            details_url = "https://maps.googleapis.com/maps/api/place/details/json"
+            details_params = {"place_id": place_id, "fields": "formatted_phone_number,website,opening_hours,rating,review,types,wheelchair_accessible_entrance,child_friendly,parking,amenities", "key": api_key, "language": "vi"}
+            detail_resp = requests.get(details_url, params=details_params, timeout=10)
+            detail_result = detail_resp.json().get("result", {})
+            phone = detail_result.get("formatted_phone_number", "N/A")
+            website = detail_result.get("website", "N/A")
+            opening_hours = detail_result.get("opening_hours", {}).get("weekday_text", [])
+            reviews = detail_result.get("reviews", [])
+            # lấy tiện ích
+            amenities = []
+            if detail_result.get("wheelchair_accessible_entrance"): amenities.append("Có lối cho xe lăn")
+            if detail_result.get("child_friendly"): amenities.append("Thân thiện trẻ em")
+            if detail_result.get("parking"): amenities.append("Có bãi đỗ xe")
+            if "wifi" in json.dumps(detail_result).lower(): amenities.append("Có Wi-Fi")
+            # Format reviews ngắn
+            review_texts = "".join([f"- {r.get('author_name', '')}: '{r.get('text','')[:100]}'\n" for r in reviews[:3]]) if reviews else "Chưa có đánh giá nổi bật."
+            hours = "\n".join(opening_hours) if opening_hours else "Chưa có thông tin."
+            # Soạn kết quả
+            result = f"""
 🏠 **{name}**
 - Địa chỉ: {address}
 - Toạ độ: ({lat_}, {lng_})
@@ -185,9 +184,9 @@ def find_nearest_store(self, lat: float, lng: float):
 {review_texts}
 - 📍 [Xem trên Google Maps]({map_link})
 """
-        return result.strip()
-    except Exception as e:
-        return f"Lỗi khi lấy cửa hàng: {str(e)}"
+            return result.strip()
+        except Exception as e:
+            return f"Lỗi khi lấy cửa hàng: {str(e)}"
 
 
 
