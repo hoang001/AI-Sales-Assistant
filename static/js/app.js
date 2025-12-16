@@ -281,7 +281,13 @@ function addUserMessage(text) {
     const msgDiv = document.createElement('div');
     msgDiv.className = 'message user';
     msgDiv.id = `msg-${messageCount}`;
-    msgDiv.innerHTML = `<div class="message-content">${htmlContent}</div>`;
+
+    msgDiv.innerHTML = `
+        <div class="message-content">
+            <p>${escapeHtml(text)}</p>
+        </div>
+    `;
+
     messagesArea.appendChild(msgDiv);
     animateMessage(msgDiv);
     scrollToBottom();
