@@ -315,65 +315,24 @@ body {
   }
 }
 
-/* Thêm vào file CSS của bạn */
+.error-message {
+    color: #dc2626;
+    background: #fef2f2;
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 8px;
+}
+
 .store-card {
     background: #ffffff;
     border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    padding: 20px;
-    margin: 15px 0;
-    font-family: 'Inter', sans-serif;
-    max-width: 500px;
-    border: 1px solid #e0e0e0;
+    padding: 12px;
+    margin-top: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    animation: fadeIn 0.3s ease-out;
 }
 
-.store-image {
-    width: 100%;
-    height: 200px;
-    object-fit: cover;
-    border-radius: 8px;
-    margin-bottom: 15px;
-}
-
-.store-card h3 {
-    color: #1a73e8;
-    margin: 10px 0;
-    font-size: 1.4em;
-}
-
-.store-card p {
-    margin: 8px 0;
-    color: #333;
-    line-height: 1.5;
-}
-
-.store-card a {
-    color: #1a73e8;
-    text-decoration: none;
-    font-weight: 500;
-}
-
-.store-card a:hover {
-    text-decoration: underline;
-}
-
-/* Style cho rating */
-.store-card .rating {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    color: #fbbc04;
-    font-weight: 500;
-}
-
-/* Responsive */
-@media (max-width: 600px) {
-    .store-card {
-        margin: 10px;
-        padding: 15px;
-    }
-    
-    .store-image {
-        height: 160px;
-    }
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }

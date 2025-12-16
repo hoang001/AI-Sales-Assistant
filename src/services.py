@@ -7,24 +7,6 @@ import unicodedata
 import requests
 import math
 
-html = f"""
-<div class="store-card">
-    {f'<img src="{photo_url}" class="store-image" alt="Hình ảnh cửa hàng {name}" />' if photo_url else ''}
-    <h3>{name}</h3>
-    <p>📍 {address}</p>
-    <p>📐 Cách bạn <b>{shop["_distance"]:.2f} km</b></p>
-    <div class="rating">
-        ⭐ {rating}/5 <span class="rating-count">({rating_count} đánh giá)</span>
-    </div>
-    <p>☎️ <a href="tel:{phone.replace(' ', '')}">{phone}</a></p>
-    {f'<p>🌐 <a href="{website}" target="_blank" rel="noopener noreferrer">{website}</a></p>' if website else ''}
-    <p>
-        <a href="{map_link}" target="_blank" rel="noopener noreferrer" class="map-link">
-            🗺 Xem trên Google Maps
-        </a>
-    </p>
-</div>
-"""
 GOOGLE_API_KEY = getattr(settings, "GOOGLE_MAPS_API_KEY", None)
 # Import Search Engine
 try:
@@ -273,21 +255,23 @@ def find_nearest_store(self, lat: float, lng: float):
         # HTML OUTPUT (QUAN TRỌNG)
         # -----------------------
         html = f"""
-<div class="store-card">
-    {f'<img src="{photo_url}" class="store-image" />' if photo_url else ''}
-    <h3>🏠 {name}</h3>
-    <p>📍 {address}</p>
-    <p>📐 Cách bạn <b>{shop["_distance"]:.2f} km</b></p>
-    <p>⭐ {rating}/5 ({rating_count} đánh giá)</p>
-    <p>☎️ {phone}</p>
-    {f'<p>🌐 <a href="{website}" target="_blank">{website}</a></p>' if website else ''}
-    <p>
-        🗺 <a href="{map_link}" target="_blank" rel="noopener noreferrer">
-            Xem trên Google Maps
-        </a>
-    </p>
-</div>
-"""
+        <div class="store-card">
+            {f'<img src="{photo_url}" class="store-image" alt="Hình ảnh cửa hàng {name}" />' if photo_url else ''}
+            <h3>{name}</h3>
+            <p>📍 {address}</p>
+            <p>📐 Cách bạn <b>{shop["_distance"]:.2f} km</b></p>
+            <div class="rating">
+                ⭐ {rating}/5 <span class="rating-count">({rating_count} đánh giá)</span>
+            </div>
+            <p>☎️ <a href="tel:{phone.replace(' ', '')}">{phone}</a></p>
+            {f'<p>🌐 <a href="{website}" target="_blank" rel="noopener noreferrer">{website}</a></p>' if website else ''}
+            <p>
+                <a href="{map_link}" target="_blank" rel="noopener noreferrer" class="map-link">
+                    🗺 Xem trên Google Maps
+                </a>
+            </p>
+        </div>
+        """
         return html.strip()
 
     except requests.exceptions.RequestException as e:
