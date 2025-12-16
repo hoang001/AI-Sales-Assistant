@@ -145,14 +145,17 @@ async function sendMessage(msgOverride = null) {
         
         // 👇 QUAN TRỌNG: Sửa đường dẫn fetch thành API_URL
         const response = await fetch(`${API_URL}/chat`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': 'true'  // Thêm header này để tránh cảnh báo từ ngrok
+            },
+            credentials: 'include',  // Thêm dòng này
             body: JSON.stringify({
-                message: text,
-                user_id: userId
+                message: text,  // Sử dụng biến text từ input
+                user_id: userId  // Sử dụng biến userId đã có
             })
         });
-
         if (!response.ok) {
             throw new Error(`HTTP Error: ${response.status}`);
         }
@@ -482,12 +485,16 @@ window.handleFindStore = async function () {
         // Send coordinates to server
         try {
             const response = await fetch(`${API_URL}/chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    message: `GPS:${lat},${lng}`,
-                    user_id: localStorage.getItem("chat_session_id") || "guest"
-                })
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': 'true'  // Thêm header này để tránh cảnh báo từ ngrok
+            },
+            credentials: 'include',  // Thêm dòng này
+            body: JSON.stringify({ 
+                message: `GPS:${lat},${lng}`,
+                user_id: localStorage.getItem("chat_session_id") || "guest"
+            })
             });
 
             if (!response.ok) {

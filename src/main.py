@@ -22,11 +22,14 @@ db_manager.initialize_db()
 app = FastAPI(title="AI Sales Assistant")
 
 # --- CẤU HÌNH CORS (Để Ngrok và Vercel kết nối được) ---
+# Cập nhật middleware CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Cho phép tất cả các nguồn (bao gồm Ngrok)
+    allow_origins=["*"],
+    allow_credentials=True,  # Thêm dòng này
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]     # Thêm dòng này
 )
 
 # --- 1. MOUNT THƯ MỤC STATIC ---
