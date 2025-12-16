@@ -86,14 +86,14 @@ class StoreService:
                 # 5. Tạo Markdown chuẩn (Frontend bắt buộc phải theo format này)
                 # QUAN TRỌNG: Phải có chữ "Giá:", "Đánh giá:", "Thông số:", "Mô tả:"
                 response_text += f"""
-**{name}**
-![{name}]({img_url})
-- 💰 Giá: {price_str}
-- ⭐ Đánh giá: {rating}/5 ({reviews} đánh giá)
-- ⚙️ Thông số: {short_specs}
-- 📝 Mô tả: {doc.page_content[:150]}...
----
-"""
+                    **{name}**
+                    ![{name}]({img_url})
+                    - 💰 Giá: {price_str}
+                    - ⭐ Đánh giá: {rating}/5 ({reviews} đánh giá)
+                    - ⚙️ Thông số: {short_specs}
+                    - 📝 Mô tả: {doc.page_content[:150]}...
+                    ---
+                """
 
         # Debug log
         print(f"DEBUG: Returning response for '{query}', length: {len(response_text)}")
@@ -140,191 +140,191 @@ class StoreService:
         return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
-def find_nearest_store(self, lat: float, lng: float):
-    import math
-    import requests
+    def find_nearest_store(self, lat: float, lng: float):
+        import math
+        import requests
 
-    api_key = getattr(settings, "PLACES_API_KEY", None)
-    if not api_key:
-        return "<b>⚠️ Chưa cấu hình PLACES_API_KEY</b>"
-
-    # -----------------------
-    # Hàm tính khoảng cách
-    # -----------------------
-    def haversine(lat1, lng1, lat2, lng2):
-        R = 6371
-        phi1, phi2 = math.radians(lat1), math.radians(lat2)
-        dphi = math.radians(lat2 - lat1)
-        dlambda = math.radians(lng2 - lng1)
-        a = (
-            math.sin(dphi / 2) ** 2
-            + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
-        )
-        return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-
-    url = "https://places.googleapis.com/v1/places:searchText"
-
-    headers = {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": api_key,
-        "X-Goog-FieldMask": (
-            "places.id,"
-            "places.displayName,"
-            "places.formattedAddress,"
-            "places.location,"
-            "places.rating,"
-            "places.userRatingCount,"
-            "places.websiteUri,"
-            "places.regularOpeningHours,"
-            "places.types,"
-            "places.internationalPhoneNumber,"
-            "places.reviews,"
-            "places.accessibilityOptions,"
-            "places.photos"
-        ),
-    }
-
-    payload = {
-        "textQuery": "CellphoneS",
-        "languageCode": "vi",
-        "locationBias": {
-            "rectangle": {
-                "low": {"latitude": lat - 0.05, "longitude": lng - 0.05},
-                "high": {"latitude": lat + 0.05, "longitude": lng + 0.05},
-            }
-        },
-    }
-
-    try:
-        resp = requests.post(url, headers=headers, json=payload, timeout=10)
-        resp.raise_for_status()
-        data = resp.json()
-
-        places = data.get("places", [])
-        if not places:
-            return "<b>❌ Không tìm thấy cửa hàng CellphoneS gần bạn.</b>"
-
-        # Lọc đúng CellphoneS + tính khoảng cách
-        candidates = []
-        for p in places:
-            name = p.get("displayName", {}).get("text", "").lower()
-            if "cellphones" in name:
-                loc = p.get("location", {})
-                if "latitude" in loc and "longitude" in loc:
-                    p["_distance"] = haversine(
-                        lat, lng, loc["latitude"], loc["longitude"]
-                    )
-                    candidates.append(p)
-
-        if not candidates:
-            return "<b>❌ Không có cửa hàng CellphoneS phù hợp.</b>"
-
-        shop = min(candidates, key=lambda x: x["_distance"])
+        api_key = getattr(settings, "PLACES_API_KEY", None)
+        if not api_key:
+            return "<b>⚠️ Chưa cấu hình PLACES_API_KEY</b>"
 
         # -----------------------
-        # Trích xuất dữ liệu
+        # Hàm tính khoảng cách
         # -----------------------
-        name = shop.get("displayName", {}).get("text", "CellphoneS")
-        address = shop.get("formattedAddress", "N/A")
-        location = shop.get("location", {})
-        lat_, lng_ = location.get("latitude"), location.get("longitude")
+        def haversine(lat1, lng1, lat2, lng2):
+            R = 6371
+            phi1, phi2 = math.radians(lat1), math.radians(lat2)
+            dphi = math.radians(lat2 - lat1)
+            dlambda = math.radians(lng2 - lng1)
+            a = (
+                math.sin(dphi / 2) ** 2
+                + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+            )
+            return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
-        rating = shop.get("rating", "N/A")
-        rating_count = shop.get("userRatingCount", 0)
-        phone = shop.get("internationalPhoneNumber", "N/A")
-        website = shop.get("websiteUri", "")
+        url = "https://places.googleapis.com/v1/places:searchText"
 
-        opening_hours = shop.get("regularOpeningHours", {}).get(
-            "weekdayDescriptions", []
-        )
+        headers = {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": api_key,
+            "X-Goog-FieldMask": (
+                "places.id,"
+                "places.displayName,"
+                "places.formattedAddress,"
+                "places.location,"
+                "places.rating,"
+                "places.userRatingCount,"
+                "places.websiteUri,"
+                "places.regularOpeningHours,"
+                "places.types,"
+                "places.internationalPhoneNumber,"
+                "places.reviews,"
+                "places.accessibilityOptions,"
+                "places.photos"
+            ),
+        }
 
-        # Ảnh cửa hàng
-        photo_url = ""
-        photos = shop.get("photos", [])
-        if photos:
-            photo_name = photos[0].get("name")
-            if photo_name:
-                photo_url = (
-                    f"https://places.googleapis.com/v1/{photo_name}/media"
-                    f"?key={api_key}&maxWidthPx=800"
-                )
-
-        map_link = f"https://www.google.com/maps/search/?api=1&query={lat_},{lng_}"
-
-        # -----------------------
-        # HTML OUTPUT (QUAN TRỌNG)
-        # -----------------------
-        html = f"""
-        <div class="store-card">
-            {f'<img src="{photo_url}" class="store-image" alt="Hình ảnh cửa hàng {name}" />' if photo_url else ''}
-            <h3>{name}</h3>
-            <p>📍 {address}</p>
-            <p>📐 Cách bạn <b>{shop["_distance"]:.2f} km</b></p>
-            <div class="rating">
-                ⭐ {rating}/5 <span class="rating-count">({rating_count} đánh giá)</span>
-            </div>
-            <p>☎️ <a href="tel:{phone.replace(' ', '')}">{phone}</a></p>
-            {f'<p>🌐 <a href="{website}" target="_blank" rel="noopener noreferrer">{website}</a></p>' if website else ''}
-            <p>
-                <a href="{map_link}" target="_blank" rel="noopener noreferrer" class="map-link">
-                    🗺 Xem trên Google Maps
-                </a>
-            </p>
-        </div>
-        """
-        return html.strip()
-
-    except requests.exceptions.RequestException as e:
-        return f"<b>❌ Lỗi kết nối Google Places API:</b> {e}"
-    except Exception as e:
-        return f"<b>❌ Lỗi xử lý dữ liệu:</b> {e}"
-
-
-
-
-def find_stores(self, location: str):
-        """
-        Tìm cửa hàng theo tên địa điểm (Quận/Huyện)
-        """
-        print(f"📍 Đang tìm cửa hàng tại: {location}")
-        
-        # Dùng lại cấu hình của SerpAPI nhưng thay đổi tham số tìm kiếm
-        params = {
-            "engine": "google_maps",
-            "q": f"CellphoneS {location}", # Tìm "CellphoneS + Cầu Giấy"
-            "type": "search",
-            "api_key": settings.SERP_API_KEY,
-            "hl": "vi"
+        payload = {
+            "textQuery": "CellphoneS",
+            "languageCode": "vi",
+            "locationBias": {
+                "rectangle": {
+                    "low": {"latitude": lat - 0.05, "longitude": lng - 0.05},
+                    "high": {"latitude": lat + 0.05, "longitude": lng + 0.05},
+                }
+            },
         }
 
         try:
-            response = requests.get("https://serpapi.com/search.json", params=params, timeout=10)
-            data = response.json()
-            results = data.get("local_results", [])
+            resp = requests.post(url, headers=headers, json=payload, timeout=10)
+            resp.raise_for_status()
+            data = resp.json()
 
-            if not results:
-                return f"Khong tim thay cua hang CellphoneS nao o khu vuc '{location}' a."
+            places = data.get("places", [])
+            if not places:
+                return "<b>❌ Không tìm thấy cửa hàng CellphoneS gần bạn.</b>"
 
-            # Lấy tối đa 3 cửa hàng để hiển thị cho gọn
-            response_text = f"📍 **Danh sách cửa hàng tại {location}:**\n\n"
-            
-            for store in results[:3]:
-                name = store.get("title")
-                address = store.get("address")
-                rating = store.get("rating", "4.5")
-                
-                # Tạo link Google Maps
-                gps = store.get("gps_coordinates", {})
-                lat = gps.get("latitude")
-                lng = gps.get("longitude")
-                map_url = f"http://maps.google.com/?q={lat},{lng}"
+            # Lọc đúng CellphoneS + tính khoảng cách
+            candidates = []
+            for p in places:
+                name = p.get("displayName", {}).get("text", "").lower()
+                if "cellphones" in name:
+                    loc = p.get("location", {})
+                    if "latitude" in loc and "longitude" in loc:
+                        p["_distance"] = haversine(
+                            lat, lng, loc["latitude"], loc["longitude"]
+                        )
+                        candidates.append(p)
 
-                response_text += f"🏠 **{name}**\n- 📍 {address}\n- ⭐ {rating}/5\n- 🗺️ [Xem bản đồ]({map_url})\n\n"
-            
-            return response_text
+            if not candidates:
+                return "<b>❌ Không có cửa hàng CellphoneS phù hợp.</b>"
 
+            shop = min(candidates, key=lambda x: x["_distance"])
+
+            # -----------------------
+            # Trích xuất dữ liệu
+            # -----------------------
+            name = shop.get("displayName", {}).get("text", "CellphoneS")
+            address = shop.get("formattedAddress", "N/A")
+            location = shop.get("location", {})
+            lat_, lng_ = location.get("latitude"), location.get("longitude")
+
+            rating = shop.get("rating", "N/A")
+            rating_count = shop.get("userRatingCount", 0)
+            phone = shop.get("internationalPhoneNumber", "N/A")
+            website = shop.get("websiteUri", "")
+
+            opening_hours = shop.get("regularOpeningHours", {}).get(
+                "weekdayDescriptions", []
+            )
+
+            # Ảnh cửa hàng
+            photo_url = ""
+            photos = shop.get("photos", [])
+            if photos:
+                photo_name = photos[0].get("name")
+                if photo_name:
+                    photo_url = (
+                        f"https://places.googleapis.com/v1/{photo_name}/media"
+                        f"?key={api_key}&maxWidthPx=800"
+                    )
+
+            map_link = f"https://www.google.com/maps/search/?api=1&query={lat_},{lng_}"
+
+            # -----------------------
+            # HTML OUTPUT (QUAN TRỌNG)
+            # -----------------------
+            html = f"""
+            <div class="store-card">
+                {f'<img src="{photo_url}" class="store-image" alt="Hình ảnh cửa hàng {name}" />' if photo_url else ''}
+                <h3>{name}</h3>
+                <p>📍 {address}</p>
+                <p>📐 Cách bạn <b>{shop["_distance"]:.2f} km</b></p>
+                <div class="rating">
+                    ⭐ {rating}/5 <span class="rating-count">({rating_count} đánh giá)</span>
+                </div>
+                <p>☎️ <a href="tel:{phone.replace(' ', '')}">{phone}</a></p>
+                {f'<p>🌐 <a href="{website}" target="_blank" rel="noopener noreferrer">{website}</a></p>' if website else ''}
+                <p>
+                    <a href="{map_link}" target="_blank" rel="noopener noreferrer" class="map-link">
+                        🗺 Xem trên Google Maps
+                    </a>
+                </p>
+            </div>
+            """
+            return html.strip()
+
+        except requests.exceptions.RequestException as e:
+            return f"<b>❌ Lỗi kết nối Google Places API:</b> {e}"
         except Exception as e:
-            return f"Loi tim kiem cua hang: {str(e)}"
+            return f"<b>❌ Lỗi xử lý dữ liệu:</b> {e}"
+
+
+
+
+    def find_stores(self, location: str):
+            """
+            Tìm cửa hàng theo tên địa điểm (Quận/Huyện)
+            """
+            print(f"📍 Đang tìm cửa hàng tại: {location}")
+            
+            # Dùng lại cấu hình của SerpAPI nhưng thay đổi tham số tìm kiếm
+            params = {
+                "engine": "google_maps",
+                "q": f"CellphoneS {location}", # Tìm "CellphoneS + Cầu Giấy"
+                "type": "search",
+                "api_key": settings.SERP_API_KEY,
+                "hl": "vi"
+            }
+
+            try:
+                response = requests.get("https://serpapi.com/search.json", params=params, timeout=10)
+                data = response.json()
+                results = data.get("local_results", [])
+
+                if not results:
+                    return f"Khong tim thay cua hang CellphoneS nao o khu vuc '{location}' a."
+
+                # Lấy tối đa 3 cửa hàng để hiển thị cho gọn
+                response_text = f"📍 **Danh sách cửa hàng tại {location}:**\n\n"
+                
+                for store in results[:3]:
+                    name = store.get("title")
+                    address = store.get("address")
+                    rating = store.get("rating", "4.5")
+                    
+                    # Tạo link Google Maps
+                    gps = store.get("gps_coordinates", {})
+                    lat = gps.get("latitude")
+                    lng = gps.get("longitude")
+                    map_url = f"http://maps.google.com/?q={lat},{lng}"
+
+                    response_text += f"🏠 **{name}**\n- 📍 {address}\n- ⭐ {rating}/5\n- 🗺️ [Xem bản đồ]({map_url})\n\n"
+                
+                return response_text
+
+            except Exception as e:
+                return f"Loi tim kiem cua hang: {str(e)}"
 
 
 store_service = StoreService()

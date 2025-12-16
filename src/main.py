@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import os
 import sys
@@ -22,11 +23,11 @@ db_manager.initialize_db()
 app = FastAPI(title="AI Sales Assistant API")
 
 # ===============================
-# CORS (CHO VERCEL / NGROK)
+# CORS
 # ===============================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Khi lên prod có thể giới hạn domain Vercel
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -47,7 +48,6 @@ class ChatInput(BaseModel):
 async def chat(inp: ChatInput):
     message = inp.message.strip()
     user_id = inp.user_id
-
     print(f"[CHAT] {user_id}: {message}")
 
     # ---- GPS ----
@@ -55,74 +55,45 @@ async def chat(inp: ChatInput):
         try:
             _, coords = message.split(":")
             lat, lng = coords.split(",")
-
-            reply = store_service.find_nearest_store(
-                float(lat),
-                float(lng)
-            )
+            reply = store_service.find_nearest_store(float(lat), float(lng))
             return {"response": reply}
-
         except Exception as e:
             print(f"[GPS ERROR] {e}")
-            return {
-                "response": "Xin lỗi, không thể xác định vị trí của bạn lúc này."
-            }
+            return {"response": "Xin lỗi, không thể xác định vị trí của bạn lúc này."}
 
     # ---- AI CHAT ----
     try:
         reply = agent_manager.get_response(user_id, message)
         return {"response": reply}
-
     except Exception as e:
         print(f"[AI ERROR] {e}")
-        return {
-            "response": "Hệ thống đang bận, vui lòng thử lại sau."
-        }
+        return {"response": "Hệ thống đang bận, vui lòng thử lại sau."}
 
 # ===============================
-# PROXY IMAGE (HTTPS SAFE)
+# PROXY IMAGE
 # ===============================
 @app.get("/proxy-image")
-async def proxy_image(
-    url: str = Query(..., description="URL ảnh cần proxy")
-):
+async def proxy_image(url: str = Query(..., description="URL ảnh cần proxy")):
     try:
         decoded_url = urllib.parse.unquote(url)
-        parsed_url = urllib.parse.urlparse(decoded_url)
-
-        if not parsed_url.scheme or not parsed_url.netloc:
-            raise HTTPException(status_code=400, detail="URL không hợp lệ")
-
-        response = requests.get(
-            decoded_url,
-            headers={
-                "User-Agent": "Mozilla/5.0"
-            },
-            timeout=10,
-            stream=True
-        )
-
-        if response.status_code != 200:
-            raise HTTPException(
-                status_code=response.status_code,
-                detail="Không thể tải ảnh"
-            )
-
+        response = requests.get(decoded_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10, stream=True)
+        if response.status_code != 200: raise HTTPException(status_code=400)
         return StreamingResponse(
             response.iter_content(chunk_size=8192),
-            media_type=response.headers.get(
-                "content-type", "image/jpeg"
-            ),
-            headers={
-                "Cache-Control": "public, max-age=3600",
-                "Access-Control-Allow-Origin": "*"
-            }
+            media_type=response.headers.get("content-type", "image/jpeg"),
+            headers={"Cache-Control": "public, max-age=3600", "Access-Control-Allow-Origin": "*"}
         )
-
-    except requests.exceptions.RequestException as e:
-        print(f"[PROXY REQUEST ERROR] {e}")
+    except Exception:
         raise HTTPException(status_code=500, detail="Lỗi tải ảnh")
 
-    except Exception as e:
-        print(f"[PROXY ERROR] {e}")
-        raise HTTPException(status_code=500, detail="Lỗi xử lý ảnh")
+# ===============================
+# STATIC FILES (QUAN TRỌNG ĐỂ FE CHẠY ĐƯỢC)
+# ===============================
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+
+# Mount các thư mục con
+app.mount("/css", StaticFiles(directory=os.path.join(STATIC_DIR, "css")), name="css")
+app.mount("/js", StaticFiles(directory=os.path.join(STATIC_DIR, "js")), name="js")
+# Mount root (đặt cuối cùng)
+app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="site")
