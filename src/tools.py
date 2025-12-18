@@ -1,13 +1,25 @@
-from .services import store_service
+# tools.py
+
+# ⚠️ store_service sẽ được inject từ main.py
+store_service = None
+
+
+def init_tools(service):
+    global store_service
+    store_service = service
 
 
 def search_products_tool(query: str):
     """Tìm kiếm sản phẩm, xem hình ảnh và giá khuyến mãi."""
+    if not store_service:
+        return "⚠️ Hệ thống chưa sẵn sàng."
     return store_service.search_products(query)
 
 
 def check_stock_tool(product_name: str):
     """Kiểm tra tồn kho và giá chính xác."""
+    if not store_service:
+        return "⚠️ Hệ thống chưa sẵn sàng."
     return store_service.check_stock(product_name)
 
 
@@ -18,6 +30,8 @@ def find_store_tool(location: str):
     - GPS → dùng trực tiếp
     - Text → Geocode → Places
     """
+    if not store_service:
+        return "<div class='error-message'>⚠️ Hệ thống chưa sẵn sàng.</div>"
 
     # ==========================
     # TRƯỜNG HỢP GPS
@@ -43,7 +57,6 @@ def find_store_tool(location: str):
 
     except Exception as e:
         return f"<div class='error-message'>❌ Lỗi tìm địa điểm: {e}</div>"
-
 
 
 defined_tools = [

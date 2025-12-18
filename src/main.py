@@ -14,9 +14,13 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from .agent import agent_manager
 from .database import db_manager
-from .services.store_service import StoreService
+from .services import StoreService
+from .tools import init_tools
 
 store_service = StoreService(agent=agent_manager)
+init_tools(store_service)
+
+
 # ===============================
 # KHỞI TẠO
 # ===============================

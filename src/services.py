@@ -16,10 +16,11 @@ except ImportError:
     StoreSearchEngine = None
 
 class StoreService:
-    def __init__(self):
+    def __init__(self, agent=None):
         print("Dang tai RAG Engine...")
         self.rag = StoreSearchEngine() if StoreSearchEngine else None
         self.agent = agent
+
 
     def search_products(self, query: str, limit: int = 10):
         """
@@ -403,5 +404,3 @@ class StoreService:
                 f"hoặc cho phép tôi sử dụng GPS."
             )
 
-
-store_service = StoreService()
