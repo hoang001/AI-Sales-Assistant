@@ -353,53 +353,54 @@ class StoreService:
     # 4. HÀM TỔNG HỢP: TÌM CỬA HÀNG THEO TÊN (Text -> HTML)
     # ==================================================
 
-def find_stores_by_text(self, input_text: str):
-    print(f"📍 Đang xử lý tìm kiếm địa điểm: {input_text}")
+    def extract_location_by_ai(self, text: str) -> str | None:
+        prompt = f"""
+        Trích xuất địa điểm hành chính từ câu sau.
+        Chỉ trả về địa điểm, không giải thích.
 
-    # 1. Chuẩn hóa text
-    text = input_text.lower()
+        Câu: "{text}"
+        """
 
-    # 2. Loại bỏ các cụm không mang ý nghĩa địa lý
-    remove_patterns = [
-        r"tìm( giúp)?",
-        r"cửa hàng",
-        r"cellphones",
-        r"ở",
-        r"gần",
-        r"cho tôi",
-        r"giúp tôi",
-        r"giúp",
-    ]
+        result = self.agent.ask(prompt).strip()
 
-    for pattern in remove_patterns:
-        text = re.sub(pattern, "", text)
+        if not result or len(result) < 3:
+            return None
 
-    # 3. Chuẩn hóa khoảng trắng
-    location = re.sub(r"\s+", " ", text).strip(" ,")
+        return result
 
-    if not location:
-        return (
-            "Bạn muốn tìm cửa hàng ở đâu? "
-            "Ví dụ: *Phú Diễn, Bắc Từ Liêm*"
-        )
+    def find_stores_by_text(self, input_text: str):
+        print(f"📍 Đang xử lý tìm kiếm địa điểm: {input_text}")
 
-    try:
-        # 4. BẮT BUỘC thêm context địa lý
-        if "hà nội" not in location:
-            location = f"{location}, Bắc Từ Liêm, Hà Nội, Việt Nam"
+        # 1. DÙNG AI TRÍCH XUẤT ĐỊA CHỈ
+        location = self.extract_location_by_ai(input_text)
 
-        print(f"   -> Query geocode: {location}")
+        if not location:
+            return (
+                "Bạn có thể cho tôi biết rõ khu vực bạn đang ở không?\n"
+                "Ví dụ: *Phú Diễn, Bắc Từ Liêm* hoặc *Cầu Giấy*"
+            )
 
-        lat, lng = self.geocode_location(location)
-        print(f"   -> Tọa độ: {lat}, {lng}")
+        # 2. CHUẨN HÓA ĐỊA LÝ (KHÔNG HARDCODE QUẬN)
+        normalized_location = location
 
-        return self.find_nearest_store(lat, lng)
+        if "việt nam" not in normalized_location.lower():
+            normalized_location = f"{normalized_location}, Hà Nội, Việt Nam"
 
-    except Exception as e:
-        print(f"❌ Lỗi tìm kiếm text: {e}")
-        return (
-            f"Xin lỗi, tôi không xác định được địa điểm **{location}**.\n"
-            f"Bạn có thể thử: *Phú Diễn, Bắc Từ Liêm*"
-        )
+        print(f"   -> Query geocode: {normalized_location}")
+
+        try:
+            lat, lng = self.geocode_location(normalized_location)
+            print(f"   -> Tọa độ: {lat}, {lng}")
+
+            return self.find_nearest_store(lat, lng)
+
+        except Exception as e:
+            print(f"❌ Lỗi tìm kiếm text: {e}")
+            return (
+                f"Tôi chưa xác định được chính xác vị trí **{location}**.\n"
+                f"Bạn có thể ghi rõ hơn (ví dụ: *Phú Diễn, Bắc Từ Liêm*) "
+                f"hoặc cho phép tôi sử dụng GPS."
+            )
+
 
 store_service = StoreService()
