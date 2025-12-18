@@ -19,6 +19,7 @@ class StoreService:
     def __init__(self):
         print("Dang tai RAG Engine...")
         self.rag = StoreSearchEngine() if StoreSearchEngine else None
+        self.agent = agent
 
     def search_products(self, query: str, limit: int = 10):
         """
