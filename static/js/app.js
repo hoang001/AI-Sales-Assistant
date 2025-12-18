@@ -118,6 +118,7 @@ function setupEventListeners() {
 // ==========================================
 // 3. LOGIC GỬI TIN (CÓ STREAMING)
 // ==========================================
+
 async function sendMessage(msgOverride = null) {
     const text = msgOverride || messageInput.value.trim();
     if (!text && !selectedFile) return;
@@ -136,18 +137,19 @@ async function sendMessage(msgOverride = null) {
     
     setLoadingState(true);
 
-    // TẠO TIN NHẮN BOT TRỐNG ĐỂ HỨNG DỮ LIỆU
+    // 1. TẠO BONG BÓNG CHAT VỚI CON TRỎ NHẤP NHÁY
     messageCount++;
     const botMsgDiv = document.createElement('div');
     botMsgDiv.className = 'message bot';
     botMsgDiv.id = `msg-${messageCount}`;
-    // Thêm con trỏ nhấp nháy
+    
+    // 👇 QUAN TRỌNG: Mặc định hiển thị con trỏ ngay lập tức để không bị trống
     botMsgDiv.innerHTML = `<div class="message-content"><span class="cursor-effect">█</span></div>`; 
     messagesArea.appendChild(botMsgDiv);
     scrollToBottom();
 
     const contentDiv = botMsgDiv.querySelector('.message-content');
-    let fullText = ""; // Biến tích lũy nội dung
+    let fullText = ""; 
 
     try {
         const userId = localStorage.getItem("chat_session_id");
@@ -166,36 +168,33 @@ async function sendMessage(msgOverride = null) {
 
         if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
 
-        // --- BẮT ĐẦU ĐỌC STREAM ---
+        // 👇 SỬA LỖI TẠI ĐÂY: KHÔNG DÙNG response.json() NỮA
+        // Thay bằng bộ đọc luồng (Stream Reader)
         const reader = response.body.getReader();
         const decoder = new TextDecoder("utf-8");
-
-        // Xóa con trỏ chờ ban đầu
-        contentDiv.innerHTML = "";
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            // Giải mã chunk dữ liệu mới nhất
+            // Giải mã từng đoạn dữ liệu nhận được
             const chunk = decoder.decode(value, { stream: true });
             fullText += chunk;
 
-            // Hiển thị ngay lập tức (dạng text format cơ bản)
-            // Lưu ý: Lúc này chưa render thẻ sản phẩm để tránh vỡ giao diện
+            // Cập nhật giao diện ngay lập tức
+            // Format cơ bản + Giữ con trỏ ở cuối
             contentDiv.innerHTML = formatText(fullText) + '<span class="cursor-effect">█</span>';
             
-            // Tự động cuộn xuống theo nội dung mới
             chatContent.scrollTop = chatContent.scrollHeight;
         }
 
-        // --- KẾT THÚC STREAM ---
-        // Xóa con trỏ nhấp nháy và render thẻ sản phẩm (nếu có)
+        // 2. KẾT THÚC STREAM: RENDER THẺ SẢN PHẨM (NẾU CÓ)
         processBackendResponse(fullText, contentDiv);
 
     } catch (error) {
         console.error("Stream Error:", error);
-        contentDiv.innerHTML = formatText(fullText) + `<br><span style="color:red; font-weight:bold">⚠️ Lỗi kết nối: ${error.message}</span>`;
+        // Nếu lỗi, hiện thông báo đỏ ngay trong bong bóng đó
+        contentDiv.innerHTML = formatText(fullText) + `<br><div style="color:red; font-weight:bold; margin-top:5px">⚠️ Lỗi: ${error.message}</div>`;
     } finally {
         setLoadingState(false);
     }
