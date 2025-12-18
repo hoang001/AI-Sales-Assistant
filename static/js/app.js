@@ -114,70 +114,98 @@ function setupEventListeners() {
     }
 }
 
-// 3. LOGIC GỬI TIN
-// 3. LOGIC GỬI TIN
+
+// ==========================================
+// 3. LOGIC GỬI TIN (CÓ STREAMING)
+// ==========================================
 async function sendMessage(msgOverride = null) {
-    // Nếu có tin nhắn đè (ví dụ từ nút GPS), dùng nó. Nếu không, lấy từ ô nhập liệu.
     const text = msgOverride || messageInput.value.trim();
-    
     if (!text && !selectedFile) return;
 
-    // Nếu là tin nhắn người dùng nhập tay thì xóa ô nhập
     if (!msgOverride) {
         messageInput.value = '';
         autoResizeTextarea();
     }
-    
-    // Ẩn welcome screen
+
     const welcome = document.querySelector('.welcome-message');
     if(welcome) welcome.style.display = 'none';
 
-    // UI: Hiển thị tin nhắn người dùng (Chỉ hiện nếu không phải là lệnh ngầm GPS)
     if (!text.startsWith("GPS:")) {
         addUserMessage(text);
     }
     
-    showTypingIndicator();
     setLoadingState(true);
+
+    // TẠO TIN NHẮN BOT TRỐNG ĐỂ HỨNG DỮ LIỆU
+    messageCount++;
+    const botMsgDiv = document.createElement('div');
+    botMsgDiv.className = 'message bot';
+    botMsgDiv.id = `msg-${messageCount}`;
+    // Thêm con trỏ nhấp nháy
+    botMsgDiv.innerHTML = `<div class="message-content"><span class="cursor-effect">█</span></div>`; 
+    messagesArea.appendChild(botMsgDiv);
+    scrollToBottom();
+
+    const contentDiv = botMsgDiv.querySelector('.message-content');
+    let fullText = ""; // Biến tích lũy nội dung
 
     try {
         const userId = localStorage.getItem("chat_session_id");
         
-        // 👇 QUAN TRỌNG: Sửa đường dẫn fetch thành API_URL
         const response = await fetch(`${API_URL}/chat`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                'ngrok-skip-browser-warning': 'true'  // Thêm header này để tránh cảnh báo từ ngrok
+                'ngrok-skip-browser-warning': 'true'
             },
             body: JSON.stringify({
-                message: text,  // Sử dụng biến text từ input
-                user_id: userId  // Sử dụng biến userId đã có
+                message: text,
+                user_id: userId
             })
         });
-        if (!response.ok) {
-            throw new Error(`HTTP Error: ${response.status}`);
+
+        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+
+        // --- BẮT ĐẦU ĐỌC STREAM ---
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+
+        // Xóa con trỏ chờ ban đầu
+        contentDiv.innerHTML = "";
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            // Giải mã chunk dữ liệu mới nhất
+            const chunk = decoder.decode(value, { stream: true });
+            fullText += chunk;
+
+            // Hiển thị ngay lập tức (dạng text format cơ bản)
+            // Lưu ý: Lúc này chưa render thẻ sản phẩm để tránh vỡ giao diện
+            contentDiv.innerHTML = formatText(fullText) + '<span class="cursor-effect">█</span>';
+            
+            // Tự động cuộn xuống theo nội dung mới
+            chatContent.scrollTop = chatContent.scrollHeight;
         }
 
-        const data = await response.json();
-        
-        hideTypingIndicator();
-        processBackendResponse(data.response);
+        // --- KẾT THÚC STREAM ---
+        // Xóa con trỏ nhấp nháy và render thẻ sản phẩm (nếu có)
+        processBackendResponse(fullText, contentDiv);
 
     } catch (error) {
-        hideTypingIndicator();
-        console.error("API Error:", error);
-        addBotMessageHTML(`⚠️ <strong>Lỗi kết nối:</strong> Không thể gọi tới Backend (${API_URL}). <br>Bạn đã bật Ngrok chưa?`);
+        console.error("Stream Error:", error);
+        contentDiv.innerHTML = formatText(fullText) + `<br><span style="color:red; font-weight:bold">⚠️ Lỗi kết nối: ${error.message}</span>`;
     } finally {
         setLoadingState(false);
     }
 }
 
 
-
-// --- THAY THẾ HÀM processBackendResponse TRONG static/js/app.js ---
-
-function processBackendResponse(markdownText) {
+// ==========================================
+// 2. XỬ LÝ FORMAT & RENDER THẺ SẢN PHẨM
+// ==========================================
+function processBackendResponse(markdownText, targetDiv = null) {
     // 1. CHUẨN HÓA DỮ LIỆU
     let html = markdownText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
@@ -189,12 +217,11 @@ function processBackendResponse(markdownText) {
     let productsText = html;
 
     if (firstProductIndex > 0) {
-        introText = html.substring(0, firstProductIndex); // Lấy phần text chào hỏi
-        productsText = html.substring(firstProductIndex); // Lấy phần danh sách sản phẩm
+        introText = html.substring(0, firstProductIndex);
+        productsText = html.substring(firstProductIndex);
     }
 
-    // 3. REGEX MỚI (FIX LỖI TRÀN TEXT)
-    // Logic: Lấy mô tả cho đến khi gặp dòng bắt đầu bằng "**" (sản phẩm tiếp theo) hoặc hết chuỗi ($)
+    // 3. REGEX (PHIÊN BẢN FIX LỖI TRÀN TEXT)
     const productBlockRegex = /\*\*(.*?)\*\*\s*\n\s*!\[(.*?)\]\((.*?)\)\s*\n\s*-\s*💰\s*Giá:\s*(.*?)\s*\n\s*-\s*⭐\s*Đánh giá:\s*(.*?)\s*\n(?:\s*-\s*⚙️\s*Thông số:\s*(.*?)\s*\n)?\s*-\s*📝\s*Mô tả:\s*([\s\S]*?)(?=\n\s*\*\*|$)/g;
 
     let hasProduct = false;
@@ -204,16 +231,14 @@ function processBackendResponse(markdownText) {
     productsHtml = productsText.replace(productBlockRegex, (match, name, alt, imgUrl, price, ratingStr, specs, description) => {
         hasProduct = true;
         
-        // Xử lý rating
         const rating = ratingStr ? ratingStr.split('/')[0].trim() : '4.5';
         
-        // Tạo object dữ liệu
         const productData = {
             name: name.trim(),
             imgUrl: imgUrl.trim(),
             price: price.trim(),
             rating: rating,
-            description: description.replace(/---/g, '').trim(), // Xóa dấu gạch ngang nếu lỡ dính vào
+            description: description.replace(/---/g, '').trim(),
             specs: specs ? specs.trim() : ""
         };
         
@@ -254,34 +279,26 @@ function processBackendResponse(markdownText) {
         `;
     });
 
-    // 5. GHÉP LẠI VÀ HIỂN THỊ
+    // 5. GHÉP LẠI
     let finalHtml = "";
-    
-    // Format phần dẫn nhập (in đậm, xuống dòng)
     introText = formatText(introText);
     
     if (hasProduct) {
         finalHtml = introText + productsHtml;
     } else {
-        // Nếu không có sản phẩm nào được detect (trường hợp chat thường), format toàn bộ
         finalHtml = formatText(html);
     }
 
-    addBotMessageHTML(finalHtml);
-}
-
-// Hàm format text cơ bản cho phần không phải sản phẩm
-function formatText(text) {
-    let html = text;
-    // In đậm: **text** -> <b>text</b>
-    html = html.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-    // In nghiêng: *text* -> <i>text</i> (Tránh conflict với **)
-    html = html.replace(/(^|[^\*])\*(?!\*)(.*?)\*/g, '$1<i>$2</i>');
-    // Xuống dòng
-    html = html.replace(/\n/g, '<br>');
-    // Gạch đầu dòng
-    html = html.replace(/^- /gm, '• ');
-    return html;
+    // 6. CẬP NHẬT UI
+    // Nếu có targetDiv (tức là đang update luồng stream cũ), ta sửa trực tiếp vào đó
+    if (targetDiv) {
+        targetDiv.innerHTML = finalHtml;
+        // Scroll lần cuối để đảm bảo nhìn thấy nội dung mới nhất
+        chatContent.scrollTop = chatContent.scrollHeight;
+    } else {
+        // Nếu không (trường hợp gọi từ nơi khác), tạo tin nhắn mới
+        addBotMessageHTML(finalHtml);
+    }
 }
 
 // 5. UI COMPONENTS
