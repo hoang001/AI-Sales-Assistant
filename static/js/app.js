@@ -531,7 +531,7 @@ window.handleFindStore = async function () {
     scrollToBottom();
 
     try {
-        // 3. LẤY GPS
+        // 3. Lấy GPS
         const position = await new Promise((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(
                 resolve,
@@ -542,13 +542,12 @@ window.handleFindStore = async function () {
 
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
-
         console.log('[GPS]', lat, lng);
 
         // 4. Cập nhật UI
         loadingMsg.querySelector('p').textContent = '🔍 Đang tìm cửa hàng gần bạn...';
 
-        // 5. GỬI TOẠ ĐỘ LÊN BACKEND
+        // 5. Gửi tọa độ lên backend
         const response = await fetch(`${API_URL}/chat`, {
             method: 'POST',
             headers: {
@@ -565,25 +564,20 @@ window.handleFindStore = async function () {
             throw new Error(`HTTP ${response.status}`);
         }
 
-        const data = await response.json();
+        // 🔑 QUAN TRỌNG: backend trả HTML → dùng text()
+        const html = await response.text();
 
-        // 6. HIỂN THỊ KẾT QUẢ
+        // 6. Hiển thị kết quả
         loadingMsg.remove();
-        addBotMessageHTML(data.response || "Không tìm thấy cửa hàng gần bạn.");
+        addBotMessageHTML(html || "Không tìm thấy cửa hàng gần bạn.");
 
     } catch (error) {
         console.error('[GPS ERROR]', error);
 
         let msg = "Không thể xác định vị trí của bạn.";
-
-        // 🔥 BẮT LỖI ĐÚNG CHUẨN
-        if (error.code === 1) {
-            msg = "Bạn đã từ chối quyền truy cập vị trí.";
-        } else if (error.code === 2) {
-            msg = "Không thể truy cập thông tin vị trí.";
-        } else if (error.code === 3) {
-            msg = "Xác định vị trí quá lâu, vui lòng thử lại.";
-        }
+        if (error.code === 1) msg = "Bạn đã từ chối quyền truy cập vị trí.";
+        else if (error.code === 2) msg = "Không thể truy cập thông tin vị trí.";
+        else if (error.code === 3) msg = "Xác định vị trí quá lâu, vui lòng thử lại.";
 
         const errorHtml = `
             <div class="store-location-error">
@@ -604,29 +598,26 @@ window.handleFindStore = async function () {
 };
 
 
-// Hàm tìm kiếm cửa hàng theo địa điểm nhập tay
-// Hàm tìm kiếm cửa hàng theo địa chỉ nhập tay
-window.searchStoreByLocation = async function() {
+window.searchStoreByLocation = async function () {
     const locationInput = document.getElementById('manualLocation');
     if (!locationInput || !locationInput.value.trim()) {
         showNotification('Lỗi', 'Vui lòng nhập địa điểm cần tìm', 'error');
         return;
     }
-    
+
     const location = locationInput.value.trim();
-    
-    // Thêm tin nhắn người dùng
+
+    // Hiển thị tin nhắn người dùng
     addUserMessage(`Tìm cửa hàng ở ${location}`);
-    
+
     try {
-        const userId = localStorage.getItem("chat_session_id");
+        const userId = localStorage.getItem("chat_session_id") || "guest";
         showTypingIndicator();
         setLoadingState(true);
-        
-        // Gọi API tìm kiếm cửa hàng
+
         const response = await fetch(`${API_URL}/chat`, {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
                 'ngrok-skip-browser-warning': 'true'
             },
@@ -635,48 +626,23 @@ window.searchStoreByLocation = async function() {
                 user_id: userId
             })
         });
-        
+
         if (!response.ok) {
-            throw new Error(`HTTP Error: ${response.status}`);
+            throw new Error(`HTTP ${response.status}`);
         }
-        
-        const data = await response.json();
-        addBotMessageHTML(data.response || "Không tìm thấy cửa hàng nào phù hợp.");
-        
+
+        // 🔑 QUAN TRỌNG: backend trả HTML → dùng text()
+        const html = await response.text();
+        addBotMessageHTML(html || "Không tìm thấy cửa hàng nào phù hợp.");
+
     } catch (error) {
         console.error("Search Error:", error);
-        addBotMessageHTML("⚠️ <strong>Lỗi tìm kiếm:</strong> Không thể tìm cửa hàng lúc này. Vui lòng thử lại sau.");
+        addBotMessageHTML(
+            "⚠️ <strong>Lỗi tìm kiếm:</strong> Không thể tìm cửa hàng lúc này. Vui lòng thử lại sau."
+        );
     } finally {
         hideTypingIndicator();
         setLoadingState(false);
-        // Xóa nội dung input sau khi gửi
         if (locationInput) locationInput.value = '';
     }
 };
-
-// This function is called when the page loads to check if we should automatically find stores
-document.addEventListener('DOMContentLoaded', () => {
-    // Check if we should automatically find stores (e.g., from a button click)
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('findStores') === 'true') {
-        // Small delay to ensure everything is loaded
-        setTimeout(() => {
-            handleFindStore();
-        }, 1000);
-    }
-});
-
-
-function formatText(text) {
-    if (!text) return "";
-    let html = text;
-    // In đậm: **text** -> <b>text</b>
-    html = html.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-    // In nghiêng: *text* -> <i>text</i>
-    html = html.replace(/(^|[^\*])\*(?!\*)(.*?)\*/g, '$1<i>$2</i>');
-    // Xuống dòng
-    html = html.replace(/\n/g, '<br>');
-    // Gạch đầu dòng
-    html = html.replace(/^- /gm, '• ');
-    return html;
-}
